@@ -37,7 +37,7 @@ html,body{margin:0;padding:0;background:#000;color:#eee;font-family:Segoe UI,Rob
 .bt.preparo{background:#e67e22}.bt.pronto{background:#27ae60}.bt.saiu{background:#455;color:#cdd}.bt.cancelado{background:#8e2b2b}
 .vazio{color:#6b6440;font-size:24px;padding:60px 20px;text-align:center}
 .rodape{color:#6b6440;font-size:12px;margin-top:6px;flex:none;display:flex;justify-content:space-between;gap:10px}
-.linha{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+.linha{user-select:none;-webkit-tap-highlight-color:transparent}
 .linha.aberta{border-color:#ffd400}
 .itens{grid-column:1/-1;border-top:1px dashed #444;padding:8px 2px 4px;display:flex;flex-direction:column;gap:8px}
 .it{font-size:20px;color:#fff;line-height:1.25}.it b{color:#ffd400;margin-right:4px}
@@ -54,6 +54,14 @@ html,body{margin:0;padding:0;background:#000;color:#eee;font-family:Segoe UI,Rob
 /* tela de configuracao */
 #config{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:5}
 #config[hidden],[hidden]{display:none!important}
+/* Tela de Entregadores: linhas dos agrupados (por baixo dos cartoes) */
+.area{flex:1;min-height:0;position:relative}
+.area .lista{position:relative;z-index:1}
+.area svg.lig{position:absolute;left:0;top:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
+.area svg.lig path{fill:none;stroke-width:2;stroke-opacity:.7;stroke-linejoin:round;stroke-linecap:round}
+body.ent .lista{column-gap:34px;padding-right:34px}
+body.ent .linha{margin-left:30px}
+.qualTela{color:#788;font-size:13px;margin-left:8px}
 #config .caixa{width:min(560px,92vw);background:#0c0c0c;border:1px solid #333;border-radius:14px;padding:22px 24px;color:#ddd;font-size:16px}
 #config h1{color:#ffd400;font-size:24px;margin:0 0 6px}
 #config p{color:#999;margin:6px 0 14px;line-height:1.4}
@@ -70,9 +78,14 @@ html,body{margin:0;padding:0;background:#000;color:#eee;font-family:Segoe UI,Rob
     <h1>🌙 Painel da noite</h1>
     <p>Este tablet mostra os pedidos que o computador do Gestor de Pedidos (com o Escravo Virtual) envia pela sala de sincronização.</p>
     <label for="inSala">Sala (a mesma do "Sincronizar entre PCs")</label>
-    <input id="inSala" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="ex.: galeto-pizzaria-3007">
+    <input id="inSala" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="a sala do Escravo (Compartilhar o histórico)">
     <label for="inToken">Token do ntfy (opcional)</label>
     <input id="inToken" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="tk_... (deixe vazio se não usa)">
+    <label for="inTela">Qual tela</label>
+    <select id="inTela" style="width:100%;font-size:20px;padding:10px 12px;border-radius:8px;border:1px solid #444;background:#000;color:#fff">
+      <option value="kds">KDS — cozinha (com os itens do pedido)</option>
+      <option value="entregadores">Tela de Entregadores (sem itens, com os agrupados ligados)</option>
+    </select>
     <button id="btSalvar">Começar</button>
     <small>Para voltar a esta tela depois, toque 5 vezes seguidas no relógio.</small>
   </div>
@@ -92,6 +105,14 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   var mh = (location.hash || '').match(/sala=([^&]+)/);
   if (mh) lsSet(LS_SALA, decodeURIComponent(mh[1]));
+  // QUAL TELA: KDS (cozinha, com itens) ou ENTREGADORES (sem itens, com os
+  // agrupados ligados). Vem do endereco (#tela=entregadores) ou da configuracao.
+  var LS_TELA = 'painelNoite.tela';
+  var mtl = (location.hash || '').match(/tela=([a-z]+)/i);
+  if (mtl) lsSet(LS_TELA, /entregador/i.test(mtl[1]) ? 'entregadores' : 'kds');
+  var TELA_ENT = lsGet(LS_TELA) === 'entregadores';
+  // trocar so o #sala= / #tela= no endereco (sem recarregar) tambem vale
+  window.addEventListener('hashchange', function () { if (/sala=|tela=/.test(location.hash || '')) location.reload(); });
   function normSala(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, '-'); }
   var sala = normSala(lsGet(LS_SALA));
   var token = String(lsGet(LS_TOKEN) || '').trim();
@@ -101,6 +122,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   function abrirConfig() {
     document.getElementById('inSala').value = sala;
     document.getElementById('inToken').value = token;
+    document.getElementById('inTela').value = TELA_ENT ? 'entregadores' : 'kds';
     elConfig.hidden = false;
   }
   document.getElementById('btSalvar').addEventListener('click', function () {
@@ -108,6 +130,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (!s) { document.getElementById('inSala').focus(); return; }
     lsSet(LS_SALA, s);
     lsSet(LS_TOKEN, String(document.getElementById('inToken').value || '').trim());
+    lsSet(LS_TELA, document.getElementById('inTela').value === 'entregadores' ? 'entregadores' : 'kds');
     location.hash = '';
     location.reload();
   });
@@ -298,6 +321,147 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   }
   var ultimoHtml = '';
   var abertos = {};   // pedidos expandidos (toque na linha)
+  // LIGACOES DOS PEDIDOS AGRUPADOS (Tela de Entregadores)
+  // ------------------------------------------------------------------
+  // Desenha, por baixo dos cartoes, linhas finas ligando os pedidos do
+  // mesmo grupo do iFood. Regras (pedido do Breno, 01/10):
+  //  - a ordem dos cartoes NUNCA muda; a linha vai ate o par onde ele estiver
+  //  - as linhas NAO se cruzam: cada ligacao escolhe o caminho livre
+  //    (margem esquerda, margem direita / vao entre colunas, pista mais
+  //    para fora, altura de encaixe um pouco acima/abaixo do meio)
+  //  - cada grupo tem uma COR (o primeiro e amarelo)
+  // Uso: desenharLigacoes(areaEl, svgEl, listaEl) — os cartoes do grupo
+  // tem data-g="<id do grupo>". Devolve { cruzamentos: n } para conferencia.
+  var LIGACOES_CORES = ['#ffd400', '#4fc3f7', '#ff6fb5', '#7ee081', '#ffa94d', '#b39dff', '#e8e8e8', '#ff5252'];
+  function desenharLigacoes(area, svg, lista) {
+    var base = area.getBoundingClientRect();
+    var grupos = {}, ordemG = [];
+    var cartoes = lista.querySelectorAll('[data-g]');
+    for (var i = 0; i < cartoes.length; i++) {
+      var el = cartoes[i], g = el.getAttribute('data-g');
+      var r = el.getBoundingClientRect();
+      if (!grupos[g]) { grupos[g] = []; ordemG.push(g); }
+      grupos[g].push({ x: r.left - base.left, r: r.right - base.left, y: r.top - base.top + r.height / 2, h: r.height });
+    }
+    // colunas (pelo x de cada cartao)
+    var xsCol = [];
+    var todos = lista.querySelectorAll('.linha');
+    for (var j = 0; j < todos.length; j++) {
+      var xx = Math.round(todos[j].getBoundingClientRect().left - base.left);
+      if (!xsCol.some(function (v) { return Math.abs(v - xx) < 5; })) xsCol.push(xx);
+    }
+    xsCol.sort(function (a, b) { return a - b; });
+    // as ligacoes: cada par vizinho dentro do grupo
+    var lig = [];
+    ordemG.forEach(function (g, gi) {
+      var m = grupos[g];
+      for (var k = 0; k < m.length - 1; k++) lig.push({ g: g, cor: LIGACOES_CORES[gi % LIGACOES_CORES.length], a: m[k], b: m[k + 1] });
+    });
+    // as mais curtas primeiro (ficam por dentro); as compridas por fora
+    lig.sort(function (p, q) { return Math.abs(p.a.y - p.b.y) - Math.abs(q.a.y - q.b.y); });
+    var PASSO = 7, PRIMEIRA = 8, DESVIOS = [0, -12, 12];
+    function conflita(s, t) {
+      if (s.g === t.g) return false;
+      var tol = 3;
+      if (s.o === 'h' && t.o === 'h') return Math.abs(s.y - t.y) < tol && Math.min(s.x2, t.x2) > Math.max(s.x1, t.x1) - tol;
+      if (s.o === 'v' && t.o === 'v') return Math.abs(s.x - t.x) < tol && Math.min(s.y2, t.y2) > Math.max(s.y1, t.y1) - tol;
+      var h = s.o === 'h' ? s : t, v = s.o === 'h' ? t : s;
+      return v.x > h.x1 - tol && v.x < h.x2 + tol && h.y > v.y1 - tol && h.y < v.y2 + tol;
+    }
+    function H(g, y, xa, xb) { return { g: g, o: 'h', y: y, xa: xa, xb: xb, x1: Math.min(xa, xb), x2: Math.max(xa, xb) }; }
+    function V(g, x, ya, yb) { return { g: g, o: 'v', x: x, y1: Math.min(ya, yb), y2: Math.max(ya, yb) }; }
+    function candidatos(L) {
+      var a = L.a, b = L.b, g = L.g, lst = [];
+      var mesma = Math.abs(a.x - b.x) < 5;
+      for (var n = 0; n < 7; n++) {
+        DESVIOS.forEach(function (dy) {
+          var ya = a.y + dy, yb = b.y + dy;
+          if (mesma) {
+            var xl = a.x - PRIMEIRA - n * PASSO;                 // margem esquerda
+            lst.push({ custo: n * 3 + (dy ? 1 : 0), seg: [H(g, ya, a.x, xl), V(g, xl, ya, yb), H(g, yb, xl, b.x)],
+                       d: 'M' + a.x + ' ' + ya + 'H' + xl + 'V' + yb + 'H' + b.x });
+            var xr = a.r + PRIMEIRA + n * PASSO;                 // margem direita
+            lst.push({ custo: n * 3 + 2 + (dy ? 1 : 0), seg: [H(g, ya, a.r, xr), V(g, xr, ya, yb), H(g, yb, xr, b.r)],
+                       d: 'M' + a.r + ' ' + ya + 'H' + xr + 'V' + yb + 'H' + b.r });
+          } else {
+            var esq = a.x < b.x ? a : b, dir = a.x < b.x ? b : a;
+            var ye = esq.y + dy, yd = dir.y + dy;
+            var xv = dir.x - PRIMEIRA - n * PASSO;               // pelo vao antes da coluna da direita
+            if (xv > esq.r + 2) lst.push({ custo: n * 3 + (dy ? 1 : 0), seg: [H(g, ye, esq.r, xv), V(g, xv, ye, yd), H(g, yd, xv, dir.x)],
+                       d: 'M' + esq.r + ' ' + ye + 'H' + xv + 'V' + yd + 'H' + dir.x });
+            var xv2 = esq.r + PRIMEIRA + n * PASSO;              // pelo vao logo depois da coluna da esquerda
+            if (xv2 < dir.x - 2) lst.push({ custo: n * 3 + 1 + (dy ? 1 : 0), seg: [H(g, ye, esq.r, xv2), V(g, xv2, ye, yd), H(g, yd, xv2, dir.x)],
+                       d: 'M' + esq.r + ' ' + ye + 'H' + xv2 + 'V' + yd + 'H' + dir.x });
+          }
+        });
+      }
+      lst.sort(function (p, q) { return p.custo - q.custo; });
+      return lst;
+    }
+    // Tenta varias ordens de encaixe e fica com a que da MENOS cruzamentos
+    // (empate: o caminho mais curto/por dentro). Sao poucas ligacoes, e rapido.
+    function encaixar(ordem) {
+      var pst = [], esc = [], cz = 0, custoT = 0;
+      ordem.forEach(function (L) {
+        var cs = candidatos(L), melhor = null, menos = 1e9;
+        for (var c = 0; c < cs.length; c++) {
+          var n = 0;
+          cs[c].seg.forEach(function (s) { pst.forEach(function (t) { if (conflita(s, t)) n++; }); });
+          if (n === 0) { melhor = cs[c]; menos = 0; break; }
+          if (n < menos) { menos = n; melhor = cs[c]; }
+        }
+        if (!melhor) return;
+        cz += menos; custoT += melhor.custo;
+        melhor.seg.forEach(function (s) { pst.push(s); });
+        esc.push({ cor: L.cor, seg: melhor.seg, g: L.g });
+      });
+      return { pst: pst, esc: esc, cz: cz, custo: custoT };
+    }
+    var semente = 7;
+    function aleat() { semente = (semente * 9301 + 49297) % 233280; return semente / 233280; }   // sempre o mesmo desenho
+    var ordens = [lig.slice(), lig.slice().reverse()];
+    for (var t = 0; t < 40 && lig.length > 1; t++) {
+      var o = lig.slice();
+      for (var q = o.length - 1; q > 0; q--) { var w = Math.floor(aleat() * (q + 1)); var tmp = o[q]; o[q] = o[w]; o[w] = tmp; }
+      ordens.push(o);
+    }
+    var best = null;
+    ordens.forEach(function (o) {
+      var r = encaixar(o);
+      if (!best || r.cz < best.cz || (r.cz === best.cz && r.custo < best.custo)) best = r;
+    });
+    var postos = best ? best.pst : [], escolhidos = best ? best.esc : [], cruz = best ? best.cz : 0;
+    // Quando o cruzamento e INEVITAVEL (dois grupos "entrelacados" entre as
+    // mesmas duas colunas), a linha horizontal passa por cima da outra com
+    // uma PONTE (um arquinho), para nao parecer que as duas se ligam.
+    var R = 5, paths = '', pontes = 0;
+    escolhidos.forEach(function (E) {
+      var d = '';
+      E.seg.forEach(function (s, k) {
+        if (s.o === 'v') { d += 'V' + E.seg[2].y; return; }
+        var dir = s.xb >= s.xa ? 1 : -1;
+        if (k === 0) d += 'M' + s.xa + ' ' + s.y;
+        var cortes = postos.filter(function (t) { return t.o === 'v' && t.g !== E.g && t.x > s.x1 + R && t.x < s.x2 - R && s.y > t.y1 + 1 && s.y < t.y2 - 1; })
+          .map(function (t) { return t.x; }).sort(function (a, b) { return (a - b) * dir; });
+        cortes.forEach(function (x) {
+          d += 'H' + (x - R * dir) + 'A' + R + ' ' + R + ' 0 0 ' + (dir > 0 ? 1 : 0) + ' ' + (x + R * dir) + ' ' + s.y;
+          pontes++;
+        });
+        d += 'H' + s.xb;
+      });
+      paths += '<path stroke="' + E.cor + '" d="' + d + '"/>';
+    });
+    svg.innerHTML = paths;
+    return { cruzamentos: cruz, ligacoes: lig.length, pontes: pontes };
+  }
+
+  function ligarAgrupados() {
+    try {
+      var area = elTela.querySelector('.area'), svg = area && area.querySelector('svg.lig'), lst = area && area.querySelector('.lista');
+      if (area && svg && lst) desenharLigacoes(area, svg, lst);
+    } catch (e) {}
+  }
+  window.addEventListener('resize', function () { if (TELA_ENT) ligarAgrupados(); });
   function htmlItens(its) {
     if (!its || !its.length) return '<div class="itens nada">itens ainda não recebidos</div>';
     return '<div class="itens">' + its.map(function (x) {
@@ -321,7 +485,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (statusConexao !== 'conectado') { estadoTxt = statusConexao; ruim = true; }
     else if (ativos && semPC !== null && semPC >= 11) { estadoTxt = '⚠️ sem notícias do computador do Gestor há ' + semPC + ' min'; ruim = true; }
     else estadoTxt = 'ao vivo';
-    var h = '<span><b class="relogio">' + hora + '</b> &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
+    var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS') + '</span> &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
             (estado.so !== 0 ? ' &nbsp; <small style="color:#788">só entrega iFood</small>' : '') + '</span>' +
             '<span class="estado' + (ruim ? ' ruim' : '') + '">' + esc(estadoTxt) + '</span>';
     if (cab.innerHTML !== h) cab.innerHTML = h;
@@ -332,7 +496,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var html = '';
     if (!lista.length) html += '<div class="vazio">Nenhum pedido no quadro.<br><small>Sala: ' + esc(sala) + '</small></div>';
     var nCol = (estado.col >= 1 && estado.col <= 4) ? estado.col : 3;
-    html += '<div class="lista c' + nCol + '">';
+    html += (TELA_ENT ? '<div class="area"><svg class="lig"></svg>' : '') + '<div class="lista c' + nCol + '">';
     lista.forEach(function (r) {
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       var logo = logoDaLoja(r.l);
@@ -343,27 +507,24 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       var tags = (r.tb ? '<i class="tag tb">⚡ TURBO</i>' : '') +
                  (g ? '<i class="tag ag">AGENDADO ' + esc(horaDoTs(g)) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
-      html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + '" data-n="' + esc(r.n) + '">' +
+      var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
+      html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + '>' +
               '<div class="num">' + esc(r.n) + '</div>' +
               '<div class="loja">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : '<div class="sem">' + esc(iniciais) + '</div>') +
               '<div class="tx"><span>' + esc(r.l || '') + '</span>' + (tags ? '<div class="tg">' + tags + '</div>' : '') + '</div></div>' +
               '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
               '<div class="bt ' + classe(r.e) + '">' + rotulo(r.e) + '</div>' +
-              (aberta ? htmlItens(r.it) : '') + '</div>';
+              ((!TELA_ENT && r.it && r.it.length) ? htmlItens(r.it) : '') + '</div>';
     });
-    html += '</div>';
+    html += '</div>' + (TELA_ENT ? '</div>' : '');
     var corpo = elTela.querySelector('.corpo');
     if (!corpo.__toque) {
       corpo.__toque = 1;
       corpo.addEventListener('click', function (ev) {
-        var l = ev.target && ev.target.closest ? ev.target.closest('.linha') : null;
-        if (!l) return;
-        var n = l.getAttribute('data-n');
-        if (abertos[n]) delete abertos[n]; else abertos[n] = 1;
-        desenhar();
+        return;   // os itens ficam sempre a vista
       });
     }
-    if (html !== ultimoHtml) { ultimoHtml = html; corpo.innerHTML = html; }
+    if (html !== ultimoHtml) { ultimoHtml = html; corpo.innerHTML = html; if (TELA_ENT) ligarAgrupados(); }
     desenharCabecalho();
     atualizarTimers();
   }
@@ -425,10 +586,12 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
                      '<div class="rodape"><span>Ordem pela hora do aceite. Timer de 7 min desde que o pedido entrou no painel; vermelho = passou do tempo.</span><span class="salaTxt"></span></div>';
   // a lista precisa ocupar a altura toda para as colunas funcionarem
   var estiloCorpo = document.createElement('style');
-  estiloCorpo.textContent = '.corpo .lista{height:100%}';
+  estiloCorpo.textContent = '.corpo .lista{height:100%}.corpo .area{height:100%}';
   document.head.appendChild(estiloCorpo);
   if (!sala) { abrirConfig(); return; }
   elTela.querySelector('.salaTxt').textContent = 'sala: ' + sala;
+  if (TELA_ENT) { document.body.className = 'ent'; try { document.title = '🛵 Tela de Entregadores'; } catch (e) {} }
+  else { try { document.title = '🍳 KDS'; } catch (e) {} }
   desenhar();
   SERVIDORES.forEach(conectar);
   setInterval(atualizarTimers, 1000);
