@@ -110,7 +110,8 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   var LS_TELA = 'painelNoite.tela';
   var mtl = (location.hash || '').match(/tela=([a-z]+)/i);
   if (mtl) lsSet(LS_TELA, /entregador/i.test(mtl[1]) ? 'entregadores' : 'kds');
-  var TELA_ENT = lsGet(LS_TELA) === 'entregadores';
+  // versao do GitHub (TV): sem escolha feita, abre na TELA DE ENTREGADORES
+  var TELA_ENT = (lsGet(LS_TELA) || 'entregadores') === 'entregadores';
   // trocar so o #sala= / #tela= no endereco (sem recarregar) tambem vale
   window.addEventListener('hashchange', function () { if (/sala=|tela=/.test(location.hash || '')) location.reload(); });
   function normSala(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, '-'); }
