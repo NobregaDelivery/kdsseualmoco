@@ -16,6 +16,12 @@ html,body{margin:0;padding:0;background:#000;color:#eee;font-family:Segoe UI,Rob
 .cab .estado{font-size:15px;color:#bba35a;text-align:right}
 .cab .estado.ruim{color:#ff6b6b}
 .lista{flex:1;min-height:0;column-count:3;column-gap:12px;column-fill:auto}
+/* nao coube na tela? a pagina rola (colunas equilibradas, ordem mantida) */
+html.rolar,html.rolar body{overflow-y:auto;height:auto;-webkit-overflow-scrolling:touch}
+html.rolar #tela{height:auto;min-height:100vh}
+html.rolar .corpo .lista{height:auto;column-fill:balance}
+html.rolar .corpo{flex:none !important}
+html.rolar .corpo .area{height:auto}
 .lista.c1{column-count:1}.lista.c2{column-count:2}.lista.c3{column-count:3}.lista.c4{column-count:4}
 .linha{display:grid;grid-template-columns:112px 1fr 112px 120px;align-items:center;gap:10px;background:#0c0c0c;border:1px solid #222;border-radius:10px;padding:6px 12px;min-height:56px;margin-bottom:8px;break-inside:avoid;-webkit-column-break-inside:avoid}
 .linha.sumiu{opacity:.35}
@@ -307,6 +313,11 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     return '-' + Math.floor(-rest / 60) + ' min';
   }
   var META_S = 7 * 60;
+  // DIA + entrega propria = metade do prazo do cartao do Gestor ("Entregar em 30min" -> 15 min)
+  function metaDe(r) {
+    if (estado.dia && r.md === 'propria' && Number(r.pz) > 0) return Math.max(60, Math.ceil(Number(r.pz) / 2) * 60);
+    return META_S;
+  }
   function listaVisivel() {
     var ag = agoraPC(), lista = [];
     Object.keys(estado.pedidos).forEach(function (n) {
@@ -516,7 +527,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
               '<div class="num">' + esc(r.n) + '</div>' +
               '<div class="loja">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : '<div class="sem">' + esc(iniciais) + '</div>') +
               '<div class="tx"><span>' + esc(r.l || '') + '</span>' + (tags ? '<div class="tg">' + tags + '</div>' : '') + '</div></div>' +
-              '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
+              '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-meta="' + metaDe(r) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
               '<div class="bt ' + classe(r.e) + '">' + rotulo(r.e) + '</div>' +
               ((!TELA_ENT && r.it && r.it.length) ? htmlItens(r.it) : '') + '</div>';
     });
@@ -528,7 +539,15 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
         return;   // os itens ficam sempre a vista
       });
     }
-    if (html !== ultimoHtml) { ultimoHtml = html; corpo.innerHTML = html; if (TELA_ENT) ligarAgrupados(); }
+    if (html !== ultimoHtml) {
+      ultimoHtml = html; corpo.innerHTML = html;
+      try {
+        document.documentElement.classList.remove('rolar');
+        var lst = corpo.querySelector('.lista');
+        if (lst && lst.scrollWidth > lst.clientWidth + 4) document.documentElement.classList.add('rolar');
+      } catch (e) {}
+      if (TELA_ENT) ligarAgrupados();
+    }
     desenharCabecalho();
     atualizarTimers();
   }
@@ -548,7 +567,8 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
         txt = '✓ ' + (levou >= 60 ? Math.round(levou / 60) + ' min' : levou + ' seg');
         cls = 'tm feito';
       } else {
-        var rest = Math.round(META_S - (ag - ini) / 1000);
+        var metaS = Number(el.getAttribute('data-meta')) || META_S;
+        var rest = Math.round(metaS - (ag - ini) / 1000);
         if (rest === 0) rest = 0;
         txt = textoTimer(rest);
         cls = rest < 0 ? 'tm estourou' : 'tm';
