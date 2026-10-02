@@ -74,8 +74,18 @@ body.ent .loja span{display:none}
 body.ent .loja{gap:8px}
 body.ent .num{font-size:64px;line-height:52px;letter-spacing:-3px}
 body.ent .tag{font-size:10px;padding:1px 5px}
-/* sem o nome da loja a linha e mais estreita: 3 colunas cabem a partir de ~1560px (TV sim, tablet nao) */
-@media (min-width:1560px){ body.ent .lista.c3{column-count:3} }
+/* Tela de Entregadores: SEMPRE 3 colunas (a partir de 1150px); pedidos espalhados pelas 3 */
+body.ent .lista.c3{column-count:3}
+body.ent .lista{column-fill:balance}
+body.ent .linha.quebra{break-before:column;-webkit-column-break-before:always}
+/* tela entre 1150 e 1590px (TV que se apresenta com 1280px): tudo ~20% menor para caber */
+body.ent.compacto .lista{column-gap:26px;padding-right:26px}
+body.ent.compacto .linha{grid-template-columns:118px minmax(40px,1fr) 90px 80px;gap:8px;padding:5px 10px;margin-left:24px;margin-bottom:6px;min-height:46px}
+body.ent.compacto .num{font-size:52px;line-height:42px;letter-spacing:-2px}
+body.ent.compacto .loja img,body.ent.compacto .loja .sem{width:42px;height:42px}
+body.ent.compacto .tm{font-size:16px;padding:5px 0}
+body.ent.compacto .bt{font-size:15px;padding:7px 0}
+body.ent.compacto .tag{font-size:9px;padding:1px 4px}
 .qualTela{color:#788;font-size:13px;margin-left:8px}
 #config .caixa{width:min(560px,92vw);background:#0c0c0c;border:1px solid #333;border-radius:14px;padding:22px 24px;color:#ddd;font-size:16px}
 #config h1{color:#ffd400;font-size:24px;margin:0 0 6px}
@@ -485,7 +495,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       if (area && svg && lst) desenharLigacoes(area, svg, lst);
     } catch (e) {}
   }
-  window.addEventListener('resize', function () { if (TELA_ENT) ligarAgrupados(); });
+  window.addEventListener('resize', function () { if (TELA_ENT) { ultimoHtml = ''; try { desenhar(); } catch (e) {} ligarAgrupados(); } });
   function htmlItens(its) {
     if (!its || !its.length) return '<div class="itens nada">itens ainda não recebidos</div>';
     return '<div class="itens">' + its.map(function (x) {
@@ -520,8 +530,19 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var html = '';
     if (!lista.length) html += '<div class="vazio">Nenhum pedido no quadro.<br><small>Sala: ' + esc(sala) + '</small></div>';
     var nCol = (estado.col >= 1 && estado.col <= 4) ? estado.col : 3;
+    // Tela de Entregadores: colunas pela LARGURA da tela, nao pela opcao do PC (3 a partir de 1560px)
+    if (TELA_ENT) {
+      nCol = window.innerWidth >= 1150 ? 3 : (window.innerWidth >= 700 ? 2 : 1);
+      try { document.body.classList.toggle('compacto', window.innerWidth < 1590); } catch (e) {}
+    }
     html += (TELA_ENT ? '<div class="area"><svg class="lig"></svg>' : '') + '<div class="lista c' + nCol + '">';
-    lista.forEach(function (r) {
+    // Tela de Entregadores: reparte igual pelas colunas (4 pedidos = 2/1/1); quebra forcada no 1o de cada coluna
+    var quebras = {};
+    if (TELA_ENT && nCol > 1 && lista.length > 1) {
+      var base = Math.floor(lista.length / nCol), sobra = lista.length % nCol, pos = 0;
+      for (var qc = 0; qc < nCol; qc++) { if (qc > 0 && pos < lista.length) quebras[pos] = 1; pos += base + (qc < sobra ? 1 : 0); }
+    }
+    lista.forEach(function (r, idx) {
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       var logo = logoDaLoja(r.l);
       var iniciais = String(r.l || '?').split(/\s+/).map(function (p) { return p.charAt(0); }).join('').slice(0, 2).toUpperCase();
@@ -532,7 +553,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
                  (g ? '<i class="tag ag">AGENDADO ' + esc(horaDoTs(g)) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
       var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
-      html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + '>' +
+      html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + (quebras[idx] ? ' quebra' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + '>' +
               '<div class="num">' + esc(r.n) + '</div>' +
               '<div class="loja">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : '<div class="sem">' + esc(iniciais) + '</div>') +
               '<div class="tx"><span>' + esc(r.l || '') + '</span>' + (tags ? '<div class="tg">' + tags + '</div>' : '') + '</div></div>' +
@@ -622,7 +643,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   estiloCorpo.textContent = '.corpo .lista{height:100%}.corpo .area{height:100%}';
   document.head.appendChild(estiloCorpo);
   if (!sala) { abrirConfig(); return; }
-  elTela.querySelector('.salaTxt').textContent = 'sala: ' + sala;
+  elTela.querySelector('.salaTxt').textContent = 'sala: ' + sala + (TELA_ENT ? ' \u00b7 tela ' + window.innerWidth + '\u00d7' + window.innerHeight : '');
   if (TELA_ENT) { document.body.className = 'ent'; try { document.title = '🛵 Tela de Entregadores'; } catch (e) {} }
   else { try { document.title = '🍳 KDS'; } catch (e) {} }
   desenhar();
