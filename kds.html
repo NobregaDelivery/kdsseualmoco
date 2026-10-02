@@ -38,7 +38,7 @@ html.rolar .corpo .area{height:auto}
 .loja .tx{display:flex;flex-direction:column;min-width:0;gap:3px}
 .tg{display:flex;gap:4px;flex-wrap:wrap}
 .tag{font-style:normal;font-size:12px;font-weight:bold;letter-spacing:.5px;padding:1px 7px;border-radius:4px;align-self:flex-start;white-space:nowrap}
-.tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff}
+.tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff}.tag.rp{background:#ff8c00;color:#000}
 .bt{font-size:19px;font-weight:bold;text-align:center;border-radius:8px;padding:9px 0;letter-spacing:1px;color:#fff}
 .bt.preparo{background:#e67e22}.bt.pronto{background:#27ae60}.bt.saiu{background:#455;color:#cdd}.bt.cancelado{background:#8e2b2b}
 .vazio{color:#6b6440;font-size:24px;padding:60px 20px;text-align:center}
@@ -67,6 +67,15 @@ html.rolar .corpo .area{height:auto}
 .area svg.lig path{fill:none;stroke-width:2;stroke-opacity:.7;stroke-linejoin:round;stroke-linecap:round}
 body.ent .lista{column-gap:34px;padding-right:34px}
 body.ent .linha{margin-left:30px}
+/* Tela de Entregadores: sem o nome escrito da loja (so a logomarca) e numero do pedido
+   de 64px SEM a linha crescer (a logo de 52px e que manda na altura da linha) */
+body.ent .linha{grid-template-columns:148px minmax(50px,1fr) 100px 104px}
+body.ent .loja span{display:none}
+body.ent .loja{gap:8px}
+body.ent .num{font-size:64px;line-height:52px;letter-spacing:-3px}
+body.ent .tag{font-size:10px;padding:1px 5px}
+/* sem o nome da loja a linha e mais estreita: 3 colunas cabem a partir de ~1560px (TV sim, tablet nao) */
+@media (min-width:1560px){ body.ent .lista.c3{column-count:3} }
 .qualTela{color:#788;font-size:13px;margin-left:8px}
 #config .caixa{width:min(560px,92vw);background:#0c0c0c;border:1px solid #333;border-radius:14px;padding:22px 24px;color:#ddd;font-size:16px}
 #config h1{color:#ffd400;font-size:24px;margin:0 0 6px}
@@ -519,7 +528,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       // agendado (g = hora do preparo): o timer so comeca nessa hora
       var g = Number(r.g) || 0;
       var iniT = r.v ? Math.max(r.i || 0, g) : 0;
-      var tags = (r.tb ? '<i class="tag tb">⚡ TURBO</i>' : '') +
+      var tags = (r.tb ? '<i class="tag tb">⚡ TURBO</i>' : '') + (r.rp ? '<i class="tag rp">🚀 RÁPIDA</i>' : '') +
                  (g ? '<i class="tag ag">AGENDADO ' + esc(horaDoTs(g)) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
       var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
