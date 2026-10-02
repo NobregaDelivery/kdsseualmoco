@@ -76,8 +76,7 @@ body.ent .num{font-size:64px;line-height:52px;letter-spacing:-3px}
 body.ent .tag{font-size:10px;padding:1px 5px}
 /* Tela de Entregadores: SEMPRE 3 colunas (a partir de 1150px); pedidos espalhados pelas 3 */
 body.ent .lista.c3{column-count:3}
-body.ent .lista{column-fill:balance}
-body.ent .linha.quebra{break-before:column;-webkit-column-break-before:always}
+/* enche a 1a coluna de cima a baixo, depois a 2a, depois a 3a (pedido do Breno) */
 /* tela entre 1150 e 1590px (TV que se apresenta com 1280px): tudo ~20% menor para caber */
 body.ent.compacto .lista{column-gap:26px;padding-right:26px}
 body.ent.compacto .linha{grid-template-columns:118px minmax(40px,1fr) 90px 80px;gap:8px;padding:5px 10px;margin-left:24px;margin-bottom:6px;min-height:46px}
@@ -346,6 +345,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       if (filtraIfood && r.md === 'propria') return;
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       if (r.e === 'rota' || r.e === 'fim') return;   // saiu para entrega: some na hora
+      if (!TELA_ENT && r.e === 'pronto') return;      // KDS: marcou PRONTO = some na hora (a cozinha ja acabou)
       if (fora && ag - (r.m || 0) > 90000) return;
       if (r.z && ag - r.z > 90000) return;
       lista.push(r);
@@ -510,6 +510,10 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var lista = listaVisivel();
     var emPreparo = lista.filter(function (r) { return r.e === 'preparo'; }).length;
     var prontos = lista.filter(function (r) { return r.e === 'pronto'; }).length;
+    if (!TELA_ENT) {   // KDS: os prontos nao aparecem na lista, mas o contador segue valendo
+      prontos = 0;
+      Object.keys(estado.pedidos).forEach(function (n) { var r = estado.pedidos[n]; if (r && r.e === 'pronto' && !r.z && !(estado.so !== 0 && !estado.dia && r.md === 'propria')) prontos++; });
+    }
     var d = new Date();
     var hora = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
     // o PC manda um sinal a cada 5 min enquanto ha pedido na cozinha
@@ -536,13 +540,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       try { document.body.classList.toggle('compacto', window.innerWidth < 1590); } catch (e) {}
     }
     html += (TELA_ENT ? '<div class="area"><svg class="lig"></svg>' : '') + '<div class="lista c' + nCol + '">';
-    // Tela de Entregadores: reparte igual pelas colunas (4 pedidos = 2/1/1); quebra forcada no 1o de cada coluna
-    var quebras = {};
-    if (TELA_ENT && nCol > 1 && lista.length > 1) {
-      var base = Math.floor(lista.length / nCol), sobra = lista.length % nCol, pos = 0;
-      for (var qc = 0; qc < nCol; qc++) { if (qc > 0 && pos < lista.length) quebras[pos] = 1; pos += base + (qc < sobra ? 1 : 0); }
-    }
-    lista.forEach(function (r, idx) {
+    lista.forEach(function (r) {
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       var logo = logoDaLoja(r.l);
       var iniciais = String(r.l || '?').split(/\s+/).map(function (p) { return p.charAt(0); }).join('').slice(0, 2).toUpperCase();
@@ -553,7 +551,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
                  (g ? '<i class="tag ag">AGENDADO ' + esc(horaDoTs(g)) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
       var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
-      html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + (quebras[idx] ? ' quebra' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + '>' +
+      html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + '>' +
               '<div class="num">' + esc(r.n) + '</div>' +
               '<div class="loja">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : '<div class="sem">' + esc(iniciais) + '</div>') +
               '<div class="tx"><span>' + esc(r.l || '') + '</span>' + (tags ? '<div class="tg">' + tags + '</div>' : '') + '</div></div>' +
