@@ -160,7 +160,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   var estado = { pedidos: {}, so: 1, col: 3, ultimoPC: 0, vistos: {} };
   try {
     var salvo = JSON.parse(lsGet(LS_ESTADO) || 'null');
-    if (salvo && salvo.sala === sala && salvo.pedidos) { estado.pedidos = salvo.pedidos; estado.so = salvo.so; estado.col = salvo.col; estado.ultimoPC = salvo.ultimoPC || 0; estado.desvioSalvo = salvo.desvio || 0; }
+    if (salvo && salvo.sala === sala && salvo.pedidos) { estado.pedidos = salvo.pedidos; estado.so = salvo.so; estado.col = salvo.col; estado.dia = salvo.dia ? 1 : 0; estado.ultimoPC = salvo.ultimoPC || 0; estado.desvioSalvo = salvo.desvio || 0; }
   } catch (e) {}
   var salvarPendente = false;
   function salvarEstado() {
@@ -168,7 +168,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     salvarPendente = true;
     setTimeout(function () {
       salvarPendente = false;
-      lsSet(LS_ESTADO, JSON.stringify({ sala: sala, pedidos: estado.pedidos, so: estado.so, col: estado.col, ultimoPC: estado.ultimoPC, desvio: desvio }));
+      lsSet(LS_ESTADO, JSON.stringify({ sala: sala, pedidos: estado.pedidos, so: estado.so, col: estado.col, dia: estado.dia ? 1 : 0, ultimoPC: estado.ultimoPC, desvio: desvio }));
     }, 1500);
   }
 
@@ -201,7 +201,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (!msg || msg.t !== 'noite') return;
     if (msg.id) { if (estado.vistos[msg.id]) return; estado.vistos[msg.id] = 1; }
     amostraServPC(msg.ts, tempoServidorSeg);
-    if (msg.ts > estado.ultimoPC) { estado.ultimoPC = msg.ts; estado.so = msg.so; estado.col = msg.col || 3; }
+    if (msg.ts > estado.ultimoPC) { estado.ultimoPC = msg.ts; estado.so = msg.so; estado.col = msg.col || 3; estado.dia = msg.dia ? 1 : 0; }
     (msg.p || []).forEach(function (c) {
       if (!c || !c.n) return;
       var atual = estado.pedidos[c.n];
@@ -311,7 +311,9 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var ag = agoraPC(), lista = [];
     Object.keys(estado.pedidos).forEach(function (n) {
       var r = estado.pedidos[n];
-      if (estado.so !== 0 && r.md === 'propria') return;
+      // DIA ligado no Gestor: o KDS mostra todos os pedidos; a Tela de Entregadores so entrega iFood, sempre
+      var filtraIfood = TELA_ENT || (!estado.dia && estado.so !== 0);
+      if (filtraIfood && r.md === 'propria') return;
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       if (r.e === 'rota' || r.e === 'fim') return;   // saiu para entrega: some na hora
       if (fora && ag - (r.m || 0) > 90000) return;
@@ -488,7 +490,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     else if (ativos && semPC !== null && semPC >= 11) { estadoTxt = '⚠️ sem notícias do computador do Gestor há ' + semPC + ' min'; ruim = true; }
     else estadoTxt = 'ao vivo';
     var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS') + '</span> &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
-            (estado.so !== 0 ? ' &nbsp; <small style="color:#788">só entrega iFood</small>' : '') + '</span>' +
+            ((TELA_ENT || (!estado.dia && estado.so !== 0)) ? ' &nbsp; <small style="color:#788">só entrega iFood</small>' : (estado.dia ? ' &nbsp; <small style="color:#788">DIA: todos os pedidos</small>' : '')) + '</span>' +
             '<span class="estado' + (ruim ? ' ruim' : '') + '">' + esc(estadoTxt) + '</span>';
     if (cab.innerHTML !== h) cab.innerHTML = h;
   }
