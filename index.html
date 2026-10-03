@@ -65,26 +65,29 @@ html.rolar .corpo .area{height:auto}
 .area .lista{position:relative;z-index:1}
 .area svg.lig{position:absolute;left:0;top:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
 .area svg.lig path{fill:none;stroke-width:2;stroke-opacity:.7;stroke-linejoin:round;stroke-linecap:round}
-body.ent .lista{column-gap:34px;padding-right:34px}
-body.ent .linha{margin-left:30px}
-/* Tela de Entregadores: sem o nome escrito da loja (so a logomarca) e numero do pedido
-   de 64px SEM a linha crescer (a logo de 52px e que manda na altura da linha) */
-body.ent .linha{grid-template-columns:148px minmax(50px,1fr) 100px 104px}
-body.ent .loja span{display:none}
-body.ent .loja{gap:8px}
+/* ===== TELA DE ENTREGADORES (aprovado em 02/10): sem logomarca, numero 64px, 4 colunas em 1920 ===== */
+body.ent .lista{column-gap:18px;padding-right:18px}
+body.ent .linha{margin-left:22px;grid-template-columns:148px minmax(56px,1fr) 86px 92px;gap:8px;padding:6px 10px}
+body.ent .loja span,body.ent .loja img,body.ent .loja .sem{display:none}   /* sem nome e sem logomarca */
+body.ent .loja{gap:0}
 body.ent .num{font-size:64px;line-height:52px;letter-spacing:-3px}
-body.ent .tag{font-size:10px;padding:1px 5px}
-/* Tela de Entregadores: SEMPRE 3 colunas (a partir de 1150px); pedidos espalhados pelas 3 */
-body.ent .lista.c3{column-count:3}
-/* enche a 1a coluna de cima a baixo, depois a 2a, depois a 3a (pedido do Breno) */
-/* tela entre 1150 e 1590px (TV que se apresenta com 1280px): tudo ~20% menor para caber */
-body.ent.compacto .lista{column-gap:26px;padding-right:26px}
-body.ent.compacto .linha{grid-template-columns:118px minmax(40px,1fr) 90px 80px;gap:8px;padding:5px 10px;margin-left:24px;margin-bottom:6px;min-height:46px}
+body.ent .tag{font-size:9px;padding:1px 4px;letter-spacing:.3px}
+body.ent .tm{font-size:20px;padding:7px 0}
+body.ent .tm.espera{font-size:18px}
+body.ent .tm.feito{font-size:14px;letter-spacing:-.5px}
+body.ent .bt{font-size:18px;letter-spacing:.5px}
+body.ent .rodape{display:none}   /* sem o rodape cabe mais uma linha de pedidos */
+/* colunas pela largura da tela (e1..e4; enche a 1a coluna de cima a baixo, depois a 2a...) */
+body.ent .lista.e1{column-count:1}body.ent .lista.e2{column-count:2}body.ent .lista.e3{column-count:3}body.ent .lista.e4{column-count:4}
+/* tela entre 1150 e 1430px (TV que se apresenta com 1280px): tudo ~20% menor para caber 3 colunas */
+body.ent.compacto .lista{column-gap:14px;padding-right:14px}
+body.ent.compacto .linha{grid-template-columns:118px minmax(44px,1fr) 70px 76px;gap:6px;padding:5px 8px;margin-left:18px;margin-bottom:6px;min-height:46px}
 body.ent.compacto .num{font-size:52px;line-height:42px;letter-spacing:-2px}
-body.ent.compacto .loja img,body.ent.compacto .loja .sem{width:42px;height:42px}
 body.ent.compacto .tm{font-size:16px;padding:5px 0}
+body.ent.compacto .tm.espera{font-size:15px}
+body.ent.compacto .tm.feito{font-size:12px}
 body.ent.compacto .bt{font-size:15px;padding:7px 0}
-body.ent.compacto .tag{font-size:9px;padding:1px 4px}
+body.ent.compacto .tag{font-size:8px;padding:1px 3px}
 .qualTela{color:#788;font-size:13px;margin-left:8px}
 #config .caixa{width:min(560px,92vw);background:#0c0c0c;border:1px solid #333;border-radius:14px;padding:22px 24px;color:#ddd;font-size:16px}
 #config h1{color:#ffd400;font-size:24px;margin:0 0 6px}
@@ -524,7 +527,8 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     else if (ativos && semPC !== null && semPC >= 11) { estadoTxt = '⚠️ sem notícias do computador do Gestor há ' + semPC + ' min'; ruim = true; }
     else estadoTxt = 'ao vivo';
     var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS') + '</span> &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
-            ((TELA_ENT || (!estado.dia && estado.so !== 0)) ? ' &nbsp; <small style="color:#788">só entrega iFood</small>' : (estado.dia ? ' &nbsp; <small style="color:#788">DIA: todos os pedidos</small>' : '')) + '</span>' +
+            ((TELA_ENT || (!estado.dia && estado.so !== 0)) ? ' &nbsp; <small style="color:#788">só entrega iFood</small>' : (estado.dia ? ' &nbsp; <small style="color:#788">DIA: todos os pedidos</small>' : '')) +
+            (TELA_ENT ? ' &nbsp; <small style="color:#566">tela ' + window.innerWidth + '×' + window.innerHeight + '</small>' : '') + '</span>' +
             '<span class="estado' + (ruim ? ' ruim' : '') + '">' + esc(estadoTxt) + '</span>';
     if (cab.innerHTML !== h) cab.innerHTML = h;
   }
@@ -536,10 +540,11 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var nCol = (estado.col >= 1 && estado.col <= 4) ? estado.col : 3;
     // Tela de Entregadores: colunas pela LARGURA da tela, nao pela opcao do PC (3 a partir de 1560px)
     if (TELA_ENT) {
-      nCol = window.innerWidth >= 1150 ? 3 : (window.innerWidth >= 700 ? 2 : 1);
-      try { document.body.classList.toggle('compacto', window.innerWidth < 1590); } catch (e) {}
+      var lg = window.innerWidth;
+      nCol = lg >= 1880 ? 4 : (lg >= 1150 ? 3 : (lg >= 700 ? 2 : 1));
+      try { document.body.classList.toggle('compacto', lg < 1430); } catch (e) {}
     }
-    html += (TELA_ENT ? '<div class="area"><svg class="lig"></svg>' : '') + '<div class="lista c' + nCol + '">';
+    html += (TELA_ENT ? '<div class="area"><svg class="lig"></svg>' : '') + '<div class="lista ' + (TELA_ENT ? 'e' : 'c') + nCol + '">';
     lista.forEach(function (r) {
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       var logo = logoDaLoja(r.l);
@@ -548,7 +553,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       var g = Number(r.g) || 0;
       var iniT = r.v ? Math.max(r.i || 0, g) : 0;
       var tags = (r.tb ? '<i class="tag tb">⚡ TURBO</i>' : '') + (r.rp ? '<i class="tag rp">🚀 RÁPIDA</i>' : '') +
-                 (g ? '<i class="tag ag">AGENDADO ' + esc(horaDoTs(g)) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
+                 (g ? '<i class="tag ag">AGENDADO' + (TELA_ENT ? '' : ' ' + esc(horaDoTs(g))) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
       var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
       html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + '>' +
@@ -587,7 +592,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       var ini = Number(el.getAttribute('data-ini')) || 0, fim = Number(el.getAttribute('data-fim')) || 0, txt, cls;
       var agd = Number(el.getAttribute('data-ag')) || 0;
       if (el.getAttribute('data-parado') === '1' && !fim) { txt = '✓'; cls = 'tm feito'; }
-      else if (!fim && agd && ag < agd) { txt = 'às ' + horaDoTs(agd); cls = 'tm espera'; }
+      else if (!fim && agd && ag < agd) { txt = (TELA_ENT ? '' : 'às ') + horaDoTs(agd); cls = 'tm espera'; }
       else if (!ini) { txt = ''; cls = 'tm nada'; }
       else if (fim && fim < ini) { txt = '✓'; cls = 'tm feito'; }
       else if (fim) {
@@ -641,7 +646,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   estiloCorpo.textContent = '.corpo .lista{height:100%}.corpo .area{height:100%}';
   document.head.appendChild(estiloCorpo);
   if (!sala) { abrirConfig(); return; }
-  elTela.querySelector('.salaTxt').textContent = 'sala: ' + sala + (TELA_ENT ? ' \u00b7 tela ' + window.innerWidth + '\u00d7' + window.innerHeight : '');
+  elTela.querySelector('.salaTxt').textContent = 'sala: ' + sala;
   if (TELA_ENT) { document.body.className = 'ent'; try { document.title = '🛵 Tela de Entregadores'; } catch (e) {} }
   else { try { document.title = '🍳 KDS'; } catch (e) {} }
   desenhar();
