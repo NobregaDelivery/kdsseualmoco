@@ -71,6 +71,26 @@ html.rolar .corpo .area{height:auto}
 body.ent .loja span,body.ent .loja img,body.ent .loja .sem{display:none}   /* sem nome e sem logomarca */
 body.ent .loja{gap:0}
 body.ent .rodape{display:none}   /* sem o rodape cabe mais uma linha de pedidos */
+/* 23.7: DIA = tela dividida: iFood a esquerda (2 colunas), rotas da Saipos a direita */
+body.ent .meio{display:flex;gap:16px;flex:1;min-height:0;height:100%}
+body.ent .meio .area{flex:1;min-width:0}
+body.ent .meio .rotasArea{flex:1;min-width:0;border-left:1px solid #222;padding-left:14px;overflow:hidden;display:flex;flex-direction:column}
+body.ent .rotasTit{color:#bba35a;font-size:13px;letter-spacing:1px;margin:0 0 6px 2px;flex:none}
+body.ent .rotasLista{flex:1;min-height:0;column-count:2;column-gap:14px;column-fill:auto}
+body.ent .rota{background:#0c0c0c;border:1px solid #2a2a2a;border-radius:10px;padding:8px 12px 10px;margin-bottom:10px;break-inside:avoid;-webkit-column-break-inside:avoid}
+body.ent .rota.saiu{border-color:#1f6b3a}
+body.ent .rota .topo{display:flex;align-items:center;justify-content:space-between;gap:10px}
+body.ent .nrota{font-family:Consolas,Menlo,'Roboto Mono',monospace;font-weight:bold;color:#fff;white-space:nowrap}
+body.ent .nrota small{font-family:Segoe UI,Arial,sans-serif;color:#bba35a;font-weight:normal;margin-right:6px;letter-spacing:1px}
+body.ent .st{font-weight:bold;border-radius:8px;text-align:right;white-space:nowrap}
+body.ent .st.espera{background:#3a3a3a;color:#ddd}body.ent .st.ok{background:#1f6b3a;color:#fff}
+body.ent .st .ha{display:block;font-weight:normal;color:#bbb}body.ent .st.ok .ha{color:#bfe8cc}
+body.ent .peds{border-top:1px dashed #333;display:flex;flex-direction:column}
+body.ent .ped{display:flex;align-items:baseline}
+body.ent .ped .n{font-family:Consolas,Menlo,'Roboto Mono',monospace;font-weight:bold;color:#ffd400}
+body.ent .ped .b{color:#ddd}body.ent .ped .b small{color:#888;font-size:70%}
+body.ent .ped.entregue{opacity:.4}body.ent .ped.entregue .b{text-decoration:line-through}
+body.ent .rvazio{color:#6b6440;padding:30px 10px;text-align:center}
 body.ent .lista.e1{column-count:1}body.ent .lista.e2{column-count:2}body.ent .lista.e3{column-count:3}body.ent .lista.e4{column-count:4}
 .qualTela{color:#788;font-size:13px;margin-left:8px}
 #config .caixa{width:min(560px,92vw);background:#0c0c0c;border:1px solid #333;border-radius:14px;padding:22px 24px;color:#ddd;font-size:16px}
@@ -168,10 +188,11 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // ESTADO: os pedidos que o PC mandou (guardado tambem no tablet,
   // para uma recarga nao zerar a tela)
   // ---------------------------------------------------------------
-  var estado = { pedidos: {}, so: 1, col: 3, ultimoPC: 0, vistos: {} };
+  var estado = { pedidos: {}, so: 1, col: 3, ultimoPC: 0, vistos: {}, rotas: null };
+  var rotasNomeEm = {};   // 23.7: rota -> quando o nome do entregador apareceu (some 30 s depois)
   try {
     var salvo = JSON.parse(lsGet(LS_ESTADO) || 'null');
-    if (salvo && salvo.sala === sala && salvo.pedidos) { estado.pedidos = salvo.pedidos; estado.so = salvo.so; estado.col = salvo.col; estado.dia = salvo.dia ? 1 : 0; estado.ultimoPC = salvo.ultimoPC || 0; estado.desvioSalvo = salvo.desvio || 0; }
+    if (salvo && salvo.sala === sala && salvo.pedidos) { estado.pedidos = salvo.pedidos; estado.so = salvo.so; estado.col = salvo.col; estado.dia = salvo.dia ? 1 : 0; estado.ultimoPC = salvo.ultimoPC || 0; estado.desvioSalvo = salvo.desvio || 0; estado.rotas = salvo.rotas || null; }
   } catch (e) {}
   var salvarPendente = false;
   function salvarEstado() {
@@ -179,7 +200,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     salvarPendente = true;
     setTimeout(function () {
       salvarPendente = false;
-      lsSet(LS_ESTADO, JSON.stringify({ sala: sala, pedidos: estado.pedidos, so: estado.so, col: estado.col, dia: estado.dia ? 1 : 0, ultimoPC: estado.ultimoPC, desvio: desvio }));
+      lsSet(LS_ESTADO, JSON.stringify({ sala: sala, pedidos: estado.pedidos, so: estado.so, col: estado.col, dia: estado.dia ? 1 : 0, ultimoPC: estado.ultimoPC, desvio: desvio, rotas: estado.rotas }));
     }, 1500);
   }
 
@@ -213,6 +234,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (msg.id) { if (estado.vistos[msg.id]) return; estado.vistos[msg.id] = 1; }
     amostraServPC(msg.ts, tempoServidorSeg);
     if (msg.ts > estado.ultimoPC) { estado.ultimoPC = msg.ts; estado.so = msg.so; estado.col = msg.col || 3; estado.dia = msg.dia ? 1 : 0; }
+    if (Array.isArray(msg.rt) && (!estado.rotas || msg.ts >= (estado.rotas.ts || 0))) estado.rotas = { ts: msg.ts, lista: msg.rt };   // 23.7: rotas da Saipos (DIA)
     (msg.p || []).forEach(function (c) {
       if (!c || !c.n) return;
       var atual = estado.pedidos[c.n];
@@ -535,7 +557,13 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       sel + ' .tm{font-size:' + p(20) + ';padding:' + p(7) + ' 0;border-radius:' + p(8) + '}' +
       sel + ' .tm.espera{font-size:' + p(18) + '}' + sel + ' .tm.feito{font-size:' + p(14) + ';letter-spacing:-.5px}' +
       sel + ' .bt{font-size:' + p(18) + ';letter-spacing:.5px;padding:' + p(9) + ' 0;border-radius:' + p(8) + '}' +
-      sel + ' .area svg.lig path{stroke-width:' + Math.max(1.2, 2 * f) + '}';
+      sel + ' .area svg.lig path{stroke-width:' + Math.max(1.2, 2 * f) + '}' +
+      // 23.7: rotas da Saipos (metade direita no DIA)
+      sel + ' .nrota{font-size:' + p(30) + '}' + sel + ' .nrota small{font-size:' + p(14) + '}' +
+      sel + ' .st{font-size:' + p(15) + ';padding:' + p(6) + ' ' + p(10) + '}' + sel + ' .st .ha{font-size:' + p(12) + '}' +
+      sel + ' .peds{margin-top:' + p(8) + ';padding-top:' + p(6) + ';gap:' + p(4) + '}' +
+      sel + ' .ped{gap:' + p(12) + ';font-size:' + p(20) + '}' + sel + ' .ped .n{min-width:' + p(64) + '}' +
+      sel + ' .rvazio{font-size:' + p(20) + '}';
   }
   var escalaEntAtual = '';
   function aplicarEscalaEnt(lg, nCol) {
@@ -550,6 +578,36 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       st.textContent = cssEntregadores(f);
     } catch (e) {}
   }
+  // Trecho compartilhado (pagina e aba do Escravo): HTML das rotas da Saipos.
+  // rotas: [{r, e, c, d, p:[{f,i,b,l,s}]}]  s: 0 aguardando, 1 saiu, 2 entregue
+  // nomeEm: mapa persistente seq -> quando o nome do entregador apareceu
+  // Regra do Breno (04/10): a rota some 30 s depois de aparecer o nome do entregador.
+  function htmlRotas(rotas, agora, nomeEm, esc, horaDoTs) {
+    var SOME_MS = 30000;
+    var vis = [];
+    (rotas || []).forEach(function (r) {
+      if (!r || !r.p || !r.p.length) return;
+      var comNome = !!(r.e || r.d);
+      if (comNome) { if (!nomeEm[r.r]) nomeEm[r.r] = agora; if (agora - nomeEm[r.r] >= SOME_MS) return; }
+      else if (nomeEm[r.r]) delete nomeEm[r.r];
+      if (r.p.every(function (p) { return p.s === 2; })) return;   // tudo entregue: some
+      vis.push(r);
+    });
+    vis.sort(function (a, b) { return (a.c || 0) - (b.c || 0) || (a.r || 0) - (b.r || 0); });
+    if (!vis.length) return '<div class="rvazio">Nenhuma rota aguardando entregador</div>';
+    return vis.map(function (r) {
+      var ent = r.p.filter(function (p) { return p.s === 2; }).length;
+      var ha = Math.max(0, Math.round((agora - (r.c || agora)) / 60000));
+      var st = (r.e || r.d)
+        ? '<span class="st ok">🛵 ' + esc(r.e || 'entregador') + '<span class="ha">saiu ' + (r.d ? horaDoTs(r.d) : 'agora') + ' · ' + ent + '/' + r.p.length + ' entregues</span></span>'
+        : '<span class="st espera">aguardando entregador<span class="ha">' + (ha < 1 ? 'rota criada agora' : 'há ' + ha + ' min') + '</span></span>';
+      var peds = r.p.map(function (p) {
+        return '<div class="ped' + (p.s === 2 ? ' entregue' : '') + '"><span class="n">' + esc(p.i || p.f || '') + '</span><span class="b">' + esc(p.b || '') + (p.l ? ' <small>' + esc(p.l) + '</small>' : '') + '</span></div>';
+      }).join('');
+      return '<div class="rota' + ((r.e || r.d) ? ' saiu' : '') + '"><div class="topo"><span class="nrota"><small>ROTA</small>' + esc(r.r) + '</span>' + st + '</div><div class="peds">' + peds + '</div></div>';
+    }).join('');
+  }
+
   function desenhar() {
     if (!sala) return;
     var lista = listaVisivel();
@@ -557,12 +615,17 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (!lista.length) html += '<div class="vazio">Nenhum pedido no quadro.<br><small>Sala: ' + esc(sala) + '</small></div>';
     var nCol = (estado.col >= 1 && estado.col <= 4) ? estado.col : 3;
     // Tela de Entregadores: colunas pela LARGURA da tela, nao pela opcao do PC (3 a partir de 1560px)
+    // 23.7: DIA = tela dividida (iFood 2 colunas | rotas da Saipos); rotas de ate 10 min atras valem
+    var agoraR = agoraPC();
+    var rotasVivas = (TELA_ENT && estado.dia && estado.rotas && agoraR - (estado.rotas.ts || 0) < 600000) ? (estado.rotas.lista || []) : null;
+    var dividida = TELA_ENT && !!rotasVivas;
     if (TELA_ENT) {
       // 23.2: SEMPRE 4 colunas (a partir de 1150px); os tamanhos acompanham a largura da tela
       var lg = window.innerWidth;
-      nCol = lg >= 1150 ? 4 : (lg >= 700 ? 2 : 1);
-      aplicarEscalaEnt(lg, nCol);
+      if (dividida) { nCol = lg >= 700 ? 2 : 1; aplicarEscalaEnt(Math.floor(lg / 2) - 8, nCol); }
+      else { nCol = lg >= 1150 ? 4 : (lg >= 700 ? 2 : 1); aplicarEscalaEnt(lg, nCol); }
     }
+    if (dividida) html += '<div class="meio">';
     html += (TELA_ENT ? '<div class="area"><svg class="lig"></svg>' : '') + '<div class="lista ' + (TELA_ENT ? 'e' : 'c') + nCol + '">';
     lista.forEach(function (r) {
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
@@ -584,6 +647,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
               ((!TELA_ENT && r.it && r.it.length) ? htmlItens(r.it) : '') + '</div>';
     });
     html += '</div>' + (TELA_ENT ? '</div>' : '');
+    if (dividida) html += '<div class="rotasArea"><div class="rotasTit">🛵 ROTAS DA SAIPOS — aguardando entregador</div><div class="rotasLista">' + htmlRotas(rotasVivas, agoraR, rotasNomeEm, esc, horaDoTs) + '</div></div></div>';
     var corpo = elTela.querySelector('.corpo');
     if (!corpo.__toque) {
       corpo.__toque = 1;
@@ -662,7 +726,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
                      '<div class="rodape"><span>Ordem pela hora do aceite. Timer de 7 min desde que o pedido entrou no painel; vermelho = passou do tempo.</span><span class="salaTxt"></span></div>';
   // a lista precisa ocupar a altura toda para as colunas funcionarem
   var estiloCorpo = document.createElement('style');
-  estiloCorpo.textContent = '.corpo .lista{height:100%}.corpo .area{height:100%}';
+  estiloCorpo.textContent = '.corpo .lista{height:100%}.corpo .area{height:100%}.corpo .meio{height:100%}';
   document.head.appendChild(estiloCorpo);
   if (!sala) { abrirConfig(); return; }
   elTela.querySelector('.salaTxt').textContent = 'sala: ' + sala;
