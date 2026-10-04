@@ -378,6 +378,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       if (r.e === 'rota' || r.e === 'fim') return;   // saiu para entrega: some na hora
       if (!TELA_ENT && r.e === 'pronto') return;      // KDS: marcou PRONTO = some na hora (a cozinha ja acabou)
+      if (TELA_ENT && r.mb) return;                   // 24.2: cliente Motoboy/Motogirl nao aparece na Tela de Entregadores
       if (fora && ag - (r.m || 0) > 90000) return;
       if (r.z && ag - r.z > 90000) return;
       lista.push(r);
@@ -603,8 +604,12 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   function htmlRotas(rotas, agora, nomeEm, esc, horaDoTs) {
     var SOME_MS = 180000;   // 23.9: 3 min depois de alocada ao entregador
     var vis = [];
-    (rotas || []).forEach(function (r) {
-      if (!r || !r.p || !r.p.length) return;
+    (rotas || []).forEach(function (r0) {
+      if (!r0 || !r0.p) return;
+      var r = {}; for (var kq in r0) r[kq] = r0[kq];   // 24.2: sem FB EXPRESS; sem pedidos de cliente Motoboy/Motogirl
+      r.e = String(r0.e || '').replace(/\s*-?\s*FB\s*EXPRESS\s*$/i, '').replace(/\s*-?\s*FB\s*$/i, '').trim();
+      r.p = r0.p.filter(function (q) { return q && !q.mb; });
+      if (!r.p.length) return;
       var comNome = !!(r.e || r.d);
       if (comNome) { if (!nomeEm[r.r]) nomeEm[r.r] = agora; if (agora - nomeEm[r.r] >= SOME_MS) return; }
       else if (nomeEm[r.r]) delete nomeEm[r.r];
