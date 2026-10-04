@@ -38,7 +38,7 @@ html.rolar .corpo .area{height:auto}
 .loja .tx{display:flex;flex-direction:column;min-width:0;gap:3px}
 .tg{display:flex;gap:3px;flex-direction:column;align-items:flex-start}   /* uma tag por linha (SITE / RETIRADA) */
 .tag{font-style:normal;font-size:12px;font-weight:bold;letter-spacing:.5px;padding:1px 7px;border-radius:4px;align-self:flex-start;white-space:nowrap}
-.tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff}.tag.rp{background:#ff8c00;color:#000}.tag.cw{background:#59327a;color:#f4edf7}
+.tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff}.tag.rp{background:#ff8c00;color:#000}.tag.cw{background:#59327a;color:#f4edf7;font-size:13px;padding:2px 8px}
 .bt{font-size:19px;font-weight:bold;text-align:center;border-radius:8px;padding:9px 0;letter-spacing:1px;color:#fff}
 .bt.preparo{background:#e67e22}.bt.pronto{background:#27ae60}.bt.saiu{background:#455;color:#cdd}.bt.cancelado{background:#8e2b2b}
 .vazio{color:#6b6440;font-size:24px;padding:60px 20px;text-align:center}
@@ -551,9 +551,10 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     sel = sel || 'body.ent';
     function p(v) { return (Math.round(v * f * 10) / 10) + 'px'; }
     return sel + ' .lista{column-gap:' + p(18) + ';padding-right:' + p(18) + '}' +
-      sel + ' .linha{margin-left:' + p(22) + ';grid-template-columns:' + p(148) + ' minmax(' + p(56) + ',1fr) ' + p(86) + ' ' + p(92) + ';gap:' + p(8) + ';padding:' + p(6) + ' ' + p(10) + ';margin-bottom:' + p(8) + ';min-height:0;border-radius:' + p(10) + '}' +
-      sel + ' .num{font-size:' + p(64) + ';line-height:' + p(52) + ';letter-spacing:' + p(-3) + '}' +
-      sel + ' .tag{font-size:' + Math.max(7, Math.round(9 * f)) + 'px;padding:1px ' + p(4) + ';letter-spacing:.3px}' +
+      sel + ' .linha{margin-left:' + p(22) + ';grid-template-columns:' + p(140) + ' minmax(' + p(66) + ',1fr) ' + p(86) + ' ' + p(92) + ';gap:' + p(8) + ';padding:' + p(6) + ' ' + p(10) + ';margin-bottom:' + p(8) + ';min-height:0;border-radius:' + p(10) + '}' +
+      sel + ' .num{font-size:' + p(64) + ';line-height:' + p(52) + ';letter-spacing:' + p(-4) + '}' +
+      sel + ' .tag{font-size:' + Math.max(8, Math.round(10 * f)) + 'px;padding:1px ' + p(4) + ';letter-spacing:.3px}' +   /* 23.9: tags maiores */
+      sel + ' .tag.cw{font-size:' + Math.max(9, Math.round(14 * f)) + 'px;padding:' + p(2) + ' ' + p(7) + ';letter-spacing:.5px}' +   /* 23.9: SITE legivel na TV */
       sel + ' .tm{font-size:' + p(20) + ';padding:' + p(7) + ' 0;border-radius:' + p(8) + '}' +
       sel + ' .tm.espera{font-size:' + p(18) + '}' + sel + ' .tm.feito{font-size:' + p(14) + ';letter-spacing:-.5px}' +
       sel + ' .bt{font-size:' + p(18) + ';letter-spacing:.5px;padding:' + p(9) + ' 0;border-radius:' + p(8) + '}' +
@@ -583,26 +584,24 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // nomeEm: mapa persistente seq -> quando o nome do entregador apareceu
   // Regra do Breno (04/10): a rota some 30 s depois de aparecer o nome do entregador.
   function htmlRotas(rotas, agora, nomeEm, esc, horaDoTs) {
-    var SOME_MS = 30000;
+    var SOME_MS = 180000;   // 23.9: 3 min depois de alocada ao entregador
     var vis = [];
     (rotas || []).forEach(function (r) {
       if (!r || !r.p || !r.p.length) return;
       var comNome = !!(r.e || r.d);
       if (comNome) { if (!nomeEm[r.r]) nomeEm[r.r] = agora; if (agora - nomeEm[r.r] >= SOME_MS) return; }
       else if (nomeEm[r.r]) delete nomeEm[r.r];
-      if (r.p.every(function (p) { return p.s === 2; })) return;   // tudo entregue: some
       vis.push(r);
     });
     vis.sort(function (a, b) { return (a.c || 0) - (b.c || 0) || (a.r || 0) - (b.r || 0); });
     if (!vis.length) return '<div class="rvazio">Nenhuma rota aguardando entregador</div>';
     return vis.map(function (r) {
-      var ent = r.p.filter(function (p) { return p.s === 2; }).length;
       var ha = Math.max(0, Math.round((agora - (r.c || agora)) / 60000));
       var st = (r.e || r.d)
-        ? '<span class="st ok">🛵 ' + esc(r.e || 'entregador') + '<span class="ha">saiu ' + (r.d ? horaDoTs(r.d) : 'agora') + ' · ' + ent + '/' + r.p.length + ' entregues</span></span>'
+        ? '<span class="st ok">🛵 ' + esc(r.e || 'entregador') + '<span class="ha">saiu ' + (r.d ? horaDoTs(r.d) : 'agora') + '</span></span>'
         : '<span class="st espera">aguardando entregador<span class="ha">' + (ha < 1 ? 'rota criada agora' : 'há ' + ha + ' min') + '</span></span>';
       var peds = r.p.map(function (p) {
-        return '<div class="ped' + (p.s === 2 ? ' entregue' : '') + '"><span class="n">' + esc(p.i || p.f || '') + '</span><span class="b">' + esc(p.b || '') + (p.l ? ' <small>' + esc(p.l) + '</small>' : '') + '</span></div>';
+        return '<div class="ped"><span class="n">' + esc(p.i || p.f || '') + '</span><span class="b">' + esc(p.b || '') + (p.l ? ' <small>' + esc(p.l) + '</small>' : '') + '</span></div>';
       }).join('');
       return '<div class="rota' + ((r.e || r.d) ? ' saiu' : '') + '"><div class="topo"><span class="nrota"><small>ROTA</small>' + esc(r.r) + '</span>' + st + '</div><div class="peds">' + peds + '</div></div>';
     }).join('');
