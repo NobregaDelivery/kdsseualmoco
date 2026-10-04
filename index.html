@@ -229,7 +229,24 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   function agoraPC() { return Date.now() - desvio; }
 
   // aplica uma mensagem do PC
+  // 24.0: rotas da Saipos chegam em mensagem propria, em partes {t:'rotas', ts, n, de, rt}
+  var rotasPartes = {};
+  function aplicarRotas(msg) {
+    if (!Array.isArray(msg.rt)) return;
+    if (estado.rotas && msg.ts < (estado.rotas.ts || 0)) return;   // mais velha que a lista atual
+    var de = Number(msg.de) || 1, n = Number(msg.n) || 0;
+    var g = rotasPartes[msg.ts] || (rotasPartes[msg.ts] = { de: de, partes: {} });
+    g.partes[n] = msg.rt;
+    if (Object.keys(g.partes).length < de) return;   // faltam partes
+    var lista = [];
+    for (var k = 0; k < de; k++) lista = lista.concat(g.partes[k] || []);
+    estado.rotas = { ts: msg.ts, lista: lista };
+    Object.keys(rotasPartes).forEach(function (t) { if (Number(t) <= msg.ts) delete rotasPartes[t]; });
+    salvarEstado();
+    desenhar();
+  }
   function aplicar(msg, tempoServidorSeg) {
+    if (msg && msg.t === 'rotas') { if (msg.id) { if (estado.vistos[msg.id]) return; estado.vistos[msg.id] = 1; } return aplicarRotas(msg); }
     if (!msg || msg.t !== 'noite') return;
     if (msg.id) { if (estado.vistos[msg.id]) return; estado.vistos[msg.id] = 1; }
     amostraServPC(msg.ts, tempoServidorSeg);
