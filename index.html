@@ -36,9 +36,9 @@ html.rolar .corpo .area{height:auto}
 .tm.nada{border-color:transparent}
 .tm.espera{border-color:#3a7bd5;color:#8ab4ff;font-size:18px}
 .loja .tx{display:flex;flex-direction:column;min-width:0;gap:3px}
-.tg{display:flex;gap:4px;flex-wrap:wrap}
+.tg{display:flex;gap:3px;flex-direction:column;align-items:flex-start}   /* uma tag por linha (SITE / RETIRADA) */
 .tag{font-style:normal;font-size:12px;font-weight:bold;letter-spacing:.5px;padding:1px 7px;border-radius:4px;align-self:flex-start;white-space:nowrap}
-.tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff}.tag.rp{background:#ff8c00;color:#000}
+.tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff}.tag.rp{background:#ff8c00;color:#000}.tag.cw{background:#59327a;color:#f4edf7}
 .bt{font-size:19px;font-weight:bold;text-align:center;border-radius:8px;padding:9px 0;letter-spacing:1px;color:#fff}
 .bt.preparo{background:#e67e22}.bt.pronto{background:#27ae60}.bt.saiu{background:#455;color:#cdd}.bt.cancelado{background:#8e2b2b}
 .vazio{color:#6b6440;font-size:24px;padding:60px 20px;text-align:center}
@@ -320,16 +320,22 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   var META_S = 7 * 60;
   // DIA + entrega propria = metade do prazo do cartao do Gestor ("Entregar em 30min" -> 15 min)
   function metaDe(r) {
+    if (r.cw && Number(r.pz) > 0) return Number(r.pz) * 60;   // 23.6: pedido do site = tempo de preparo original
     if (estado.dia && r.md === 'propria' && Number(r.pz) > 0) return Math.max(60, Math.ceil(Number(r.pz) / 2) * 60);
     return META_S;
   }
+  // 23.4: das 16h as 5h so pizzaria (as lojas do almoco somem do KDS as 16h)
+  function lojaDoAlmoco(nome) { return !/pizza/i.test(String(nome || '')); }
+  function horaSoPizza() { var h = new Date().getHours(); return h >= 16 || h < 5; }
   function listaVisivel() {
     var ag = agoraPC(), lista = [];
+    var soPizza = horaSoPizza();
     Object.keys(estado.pedidos).forEach(function (n) {
       var r = estado.pedidos[n];
       // DIA ligado no Gestor: o KDS mostra todos os pedidos; a Tela de Entregadores so entrega iFood, sempre
       var filtraIfood = TELA_ENT || (!estado.dia && estado.so !== 0);
       if (filtraIfood && r.md === 'propria') return;
+      if (soPizza && lojaDoAlmoco(r.l)) return;   // 23.4: depois das 16h so pizzaria
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       if (r.e === 'rota' || r.e === 'fim') return;   // saiu para entrega: some na hora
       if (!TELA_ENT && r.e === 'pronto') return;      // KDS: marcou PRONTO = some na hora (a cozinha ja acabou)
@@ -499,7 +505,8 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var prontos = lista.filter(function (r) { return r.e === 'pronto'; }).length;
     if (!TELA_ENT) {   // KDS: os prontos nao aparecem na lista, mas o contador segue valendo
       prontos = 0;
-      Object.keys(estado.pedidos).forEach(function (n) { var r = estado.pedidos[n]; if (r && r.e === 'pronto' && !r.z && !(estado.so !== 0 && !estado.dia && r.md === 'propria')) prontos++; });
+      var soPz = horaSoPizza();
+      Object.keys(estado.pedidos).forEach(function (n) { var r = estado.pedidos[n]; if (r && r.e === 'pronto' && !r.z && !(estado.so !== 0 && !estado.dia && r.md === 'propria') && !(soPz && lojaDoAlmoco(r.l))) prontos++; });
     }
     var d = new Date();
     var hora = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
@@ -564,12 +571,12 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       // agendado (g = hora do preparo): o timer so comeca nessa hora
       var g = Number(r.g) || 0;
       var iniT = r.v ? Math.max(r.i || 0, g) : 0;
-      var tags = (r.tb ? '<i class="tag tb">⚡ TURBO</i>' : '') + (r.rp ? '<i class="tag rp">🚀 RÁPIDA</i>' : '') +
+      var tags = (r.cw ? '<i class="tag cw">SITE</i>' : '') + (r.tb ? '<i class="tag tb">⚡ TURBO</i>' : '') + (r.rp ? '<i class="tag rp">🚀 RÁPIDA</i>' : '') +
                  (g ? '<i class="tag ag">AGENDADO' + (TELA_ENT ? '' : ' ' + esc(horaDoTs(g))) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
       var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
       html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + '>' +
-              '<div class="num">' + esc(r.n) + '</div>' +
+              '<div class="num">' + esc(r.d || r.n) + '</div>' +
               '<div class="loja">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : '<div class="sem">' + esc(iniciais) + '</div>') +
               '<div class="tx"><span>' + esc(r.l || '') + '</span>' + (tags ? '<div class="tg">' + tags + '</div>' : '') + '</div></div>' +
               '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-meta="' + metaDe(r) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
