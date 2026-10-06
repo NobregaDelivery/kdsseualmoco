@@ -36,9 +36,10 @@ html.rolar .corpo .area{height:auto}
 .tm.nada{border-color:transparent}
 .tm.espera{border-color:#3a7bd5;color:#8ab4ff;font-size:18px}
 .loja .tx{display:flex;flex-direction:column;min-width:0;gap:3px}
-.tg{display:flex;gap:3px;flex-direction:column;align-items:flex-start}   /* uma tag por linha (SITE / RETIRADA) */
+.tg{display:flex;gap:3px;flex-direction:column;align-items:flex-start}   /* uma tag por linha (capacete / SITE / RETIRADA) */
 .tag{font-style:normal;font-size:12px;font-weight:bold;letter-spacing:.5px;padding:1px 7px;border-radius:4px;align-self:flex-start;white-space:nowrap}
 .tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff}.tag.rp{background:#ff8c00;color:#000}.tag.cw{background:#59327a;color:#f4edf7;font-size:13px;padding:2px 8px}
+.tag.ch{background:transparent;color:#e11;display:inline-flex;align-items:center;justify-content:center;line-height:1;padding:0;border-radius:0}.tag.ch svg{width:34px;height:26px;display:block}
 .bt{font-size:19px;font-weight:bold;text-align:center;border-radius:8px;padding:9px 0;letter-spacing:1px;color:#fff}
 .bt.preparo{background:#e67e22}.bt.pronto{background:#27ae60}.bt.saiu{background:#455;color:#cdd}.bt.cancelado{background:#8e2b2b}
 .vazio{color:#6b6440;font-size:24px;padding:60px 20px;text-align:center}
@@ -190,6 +191,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // ---------------------------------------------------------------
   var estado = { pedidos: {}, so: 1, col: 3, ultimoPC: 0, vistos: {}, rotas: null };
   var rotasNomeEm = {};   // 23.7: rota -> quando o nome do entregador apareceu (some 30 s depois)
+  var CAPACETE_SVG = '<svg viewBox="0 4.5 32 24.5" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="23" r="4.3"/><circle cx="25" cy="23" r="4.3"/><path d="M7.5 23h10l4.5-12h4"/><path d="M22 11l3 12"/><path d="M4.5 18h9"/></g><rect x="2" y="6.5" width="11" height="9" rx="1.6" fill="currentColor"/></svg>';   // 24.7: moto de entrega com bau (escolha do Breno)   // 24.7: entregador chegou na loja
   try {
     var salvo = JSON.parse(lsGet(LS_ESTADO) || 'null');
     if (salvo && salvo.sala === sala && salvo.pedidos) { estado.pedidos = salvo.pedidos; estado.so = salvo.so; estado.col = salvo.col; estado.dia = salvo.dia ? 1 : 0; estado.ultimoPC = salvo.ultimoPC || 0; estado.desvioSalvo = salvo.desvio || 0; estado.rotas = salvo.rotas || null; }
@@ -573,6 +575,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       sel + ' .num{font-size:' + p(64) + ';line-height:' + p(52) + ';letter-spacing:' + p(-4) + '}' +
       sel + ' .tag{font-size:' + Math.max(8, Math.round(10 * f)) + 'px;padding:1px ' + p(4) + ';letter-spacing:.3px}' +   /* 23.9: tags maiores */
       sel + ' .tag.cw{font-size:' + Math.max(9, Math.round(14 * f)) + 'px;padding:' + p(2) + ' ' + p(7) + ';letter-spacing:.5px}' +   /* 23.9: SITE legivel na TV */
+      sel + ' .tag.ch{padding:0}' + sel + ' .tag.ch svg{width:' + p(34) + ';height:' + p(26) + '}' +   /* 24.7: capacete acompanha a escala */
       sel + ' .tm{font-size:' + p(20) + ';padding:' + p(7) + ' 0;border-radius:' + p(8) + '}' +
       sel + ' .tm.espera{font-size:' + p(18) + '}' + sel + ' .tm.feito{font-size:' + p(14) + ';letter-spacing:-.5px}' +
       sel + ' .bt{font-size:' + p(18) + ';letter-spacing:.5px;padding:' + p(9) + ' 0;border-radius:' + p(8) + '}' +
@@ -655,6 +658,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       // agendado (g = hora do preparo): o timer so comeca nessa hora
       var g = Number(r.g) || 0;
       var iniT = r.v ? Math.max(r.i || 0, g) : 0;
+      var capacete = (TELA_ENT && r.ch && r.md !== 'retirada') ? '<i class="tag ch" title="entregador na loja">' + CAPACETE_SVG + '</i>' : '';   // 24.7
       var tags = (r.cw ? '<i class="tag cw">SITE</i>' : '') + (r.tb ? '<i class="tag tb">⚡ TURBO</i>' : '') + (r.rp ? '<i class="tag rp">🚀 RÁPIDA</i>' : '') +
                  (g ? '<i class="tag ag">AGENDADO' + (TELA_ENT ? '' : ' ' + esc(horaDoTs(g))) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
@@ -662,7 +666,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + '>' +
               '<div class="num">' + esc(r.d || r.n) + '</div>' +
               '<div class="loja">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : '<div class="sem">' + esc(iniciais) + '</div>') +
-              '<div class="tx"><span>' + esc(r.l || '') + '</span>' + (tags ? '<div class="tg">' + tags + '</div>' : '') + '</div></div>' +
+              '<div class="tx"><span>' + esc(r.l || '') + '</span>' + ((tags || capacete) ? '<div class="tg">' + capacete + tags + '</div>' : '') + '</div></div>' +
               '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-meta="' + metaDe(r) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
               '<div class="bt ' + classe(r.e) + '">' + rotulo(r.e) + '</div>' +
               ((!TELA_ENT && r.it && r.it.length) ? htmlItens(r.it) : '') + '</div>';
