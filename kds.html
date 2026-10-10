@@ -13,6 +13,7 @@ html,body{margin:0;padding:0;background:#000;color:#eee;font-family:Segoe UI,Rob
 #tela{padding:10px 14px;height:100vh;box-sizing:border-box;display:flex;flex-direction:column}
 .cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;color:#bba35a;font-size:18px;flex:none;gap:10px}
 .cab b{color:#ffd400;font-size:24px}
+.cab .altKds{display:inline-flex;margin:0 10px 0 6px;border:1px solid #555;border-radius:8px;overflow:hidden;cursor:pointer;user-select:none;vertical-align:middle}.cab .altKds .op{padding:4px 10px;font-size:14px;font-weight:bold;color:#777;background:#161616}.cab .altKds .op.on{color:#000;background:#ffd400}.cab .altKds .op i{font-style:normal;background:#e11;color:#fff;border-radius:10px;padding:0 7px;margin-left:4px;font-size:13px}   /* 26.0: botao Almoco/Pizza do KDS */
 .cab .estado{font-size:15px;color:#bba35a;text-align:right}
 .cab .estado.ruim{color:#ff6b6b}
 .lista{flex:1;min-height:0;column-count:3;column-gap:12px;column-fill:auto}
@@ -265,6 +266,19 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       estado.pedidos[c.n] = c;
     });
     var ag = agoraPC();
+    // 25.9: a lista 'at' (pedidos ativos no Gestor) vem em toda mensagem. Pedido em preparo/pronto
+    // que NAO esta nela e nao recebe nada ha 2 min = saiu do quadro (a mensagem de saida se perdeu)
+    if (Array.isArray(msg.at) && msg.ts >= estado.ultimoPC) {
+      var ativosAt = {};
+      msg.at.forEach(function (n) { ativosAt[String(n)] = 1; });
+      Object.keys(estado.pedidos).forEach(function (n) {
+        var r = estado.pedidos[n];
+        if (!r || r.z || ativosAt[n]) return;
+        if (r.e !== 'preparo' && r.e !== 'pronto') return;
+        if (msg.ts - (r._ts || 0) < 120000) return;
+        r.z = msg.ts; r._ts = msg.ts;
+      });
+    }
     // 25.6: negociacao em aberto (ng = quando o Gestor viu o selo pela 1a vez): avisa UMA vez por pedido, so na Tela de Entregadores
     if (TELA_ENT) {
       (msg.p || []).forEach(function (c) {
@@ -309,9 +323,9 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var es;
     try { es = new EventSource(urlSSE(srv)); } catch (e) { return agendar(srv); }
     c.es = es;
-    es.onopen = function () { c.erros = 0; c.aberto = true; ultimaAtividade = Date.now(); atualizarStatus(); };
+    es.onopen = function () { c.erros = 0; c.aberto = true; ultimaAtividade = Date.now(); c.atividade = Date.now(); atualizarStatus(); };
     es.onmessage = function (ev) {
-      ultimaAtividade = Date.now();
+      ultimaAtividade = Date.now(); c.atividade = Date.now();
       var env = null; try { env = JSON.parse(ev.data); } catch (e) { return; }
       if (!env || env.event !== 'message') return;
       if (env.id) c.ultimoId = env.id;
@@ -319,7 +333,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       aplicar(msg, env.time);
     };
     function sinalAoVivo(ev) {
-      ultimaAtividade = Date.now();
+      ultimaAtividade = Date.now(); c.atividade = Date.now();
       try { var d = JSON.parse(ev.data); amostraTabServ(d.time); } catch (e) {}
     }
     es.addEventListener('keepalive', sinalAoVivo);
@@ -345,13 +359,57 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     desenharCabecalho();
   }
   // vigia: conexao sem sinal (nem keepalive) ha mais de 2 min = religa
+  // 25.9: POR SERVIDOR. Em 09/10 a ligacao com o ntfy.sh morreu em silencio as 12:13 e o
+  // vigia antigo (um relogio so para os dois servidores) nao percebeu, porque o reserva
+  // seguia mandando keepalive — o KDS ficou 3 h sem as atualizacoes do Gestor.
   setInterval(function () {
     if (!sala) return;
-    if (ultimaAtividade && Date.now() - ultimaAtividade > 120000) {
-      ultimaAtividade = Date.now();
+    var ag = Date.now();
+    SERVIDORES.forEach(function (srv) {
+      var c = conexoes[srv];
+      if (!c) return;
+      if (c.atividade && ag - c.atividade > 120000) { c.atividade = ag; conectar(srv); }
+    });
+    if (ultimaAtividade && ag - ultimaAtividade > 120000) {
+      ultimaAtividade = ag;
       SERVIDORES.forEach(conectar);
     }
   }, 20000);
+  // 25.9: RESGATE — a cada 90 s pergunta ao servidor o que saiu depois da ultima mensagem
+  // recebida (since=id). O que a ligacao ao vivo perdeu entra por aqui.
+  function urlPoll(srv) {
+    var c = conexoes[srv] || {};
+    var u = srv + '/' + encodeURIComponent(sala + '-noite-ev') + '/json?poll=1&since=' + encodeURIComponent(c.ultimoId || '30m');
+    if (token && srv === 'https://ntfy.sh') {
+      try { u += '&auth=' + btoa('\u0000user\u0000' + token).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) {}
+    }
+    return u;
+  }
+  var resgatando = {};
+  function resgatar(srv) {
+    var c = conexoes[srv];
+    if (!c || resgatando[srv]) return;
+    resgatando[srv] = true;
+    fetch(urlPoll(srv), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function (txt) {
+        var n = 0;
+        txt.split('\n').forEach(function (ln) {
+          if (!ln) return;
+          var env = null; try { env = JSON.parse(ln); } catch (e) { return; }
+          if (!env || env.event !== 'message') return;
+          if (env.id) c.ultimoId = env.id;
+          var msg = null; try { msg = JSON.parse(env.message); } catch (e) { return; }
+          if (msg && msg.id && estado.vistos[msg.id]) return;   // a ligacao ao vivo ja trouxe
+          n++;
+          aplicar(msg, env.time);
+        });
+        if (n) { c.atividade = Date.now(); ultimaAtividade = Date.now(); }
+      })
+      .catch(function () {})
+      .then(function () { resgatando[srv] = false; });
+  }
+  setInterval(function () { if (sala) SERVIDORES.forEach(resgatar); }, 90000);
   // tela voltou (tablet acordou): confere a conexao
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') { SERVIDORES.forEach(function (s) { if (!conexoes[s] || !conexoes[s].aberto) conectar(s); }); pedirTelaAcesa(); }
@@ -381,6 +439,44 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // 23.4: das 16h as 5h so pizzaria (as lojas do almoco somem do KDS as 16h)
   function lojaDoAlmoco(nome) { return !/pizza/i.test(String(nome || '')); }
   function horaSoPizza() { var h = new Date().getHours(); return h >= 16 || h < 5; }
+  // 26.0: BOTAO ALMOCO / PIZZA no topo do KDS. Sem toque, segue o relogio (ate 16h = almoco;
+  // das 16h as 5h = pizza). Um toque escolhe na hora e vale ate a proxima virada (16h ou 5h),
+  // quando o relogio volta a mandar. So no KDS; a Tela de Entregadores nao muda.
+  var LS_KDS_FILTRO = 'painelNoite.kdsFiltro';
+  function proximaVirada() {
+    var d = new Date(), h = d.getHours(), v = new Date(d);
+    if (h < 5) v.setHours(5, 0, 0, 0); else if (h < 16) v.setHours(16, 0, 0, 0); else { v.setDate(v.getDate() + 1); v.setHours(5, 0, 0, 0); }
+    return v.getTime();
+  }
+  function filtroKds() {
+    try {
+      var m = JSON.parse(lsGet(LS_KDS_FILTRO) || 'null');
+      if (m && m.v && Date.now() < (m.ate || 0)) return m.v;
+    } catch (e) {}
+    return horaSoPizza() ? 'pizza' : 'almoco';
+  }
+  function alternarFiltroKds() {
+    var novo = filtroKds() === 'pizza' ? 'almoco' : 'pizza';
+    try { lsSet(LS_KDS_FILTRO, JSON.stringify({ v: novo, ate: proximaVirada() })); } catch (e) {}
+    ultimoHtml = ''; desenhar();
+  }
+  // quantos pedidos em preparo o OUTRO lado do botao esta escondendo (aparece no botao)
+  function contarModoKds(modo) {
+    var n = 0;
+    Object.keys(estado.pedidos).forEach(function (k) {
+      var r = estado.pedidos[k];
+      if (!r || r.e !== 'preparo' || r.z) return;
+      if (!estado.dia && estado.so !== 0 && r.md === 'propria') return;
+      if (modo === 'pizza' ? lojaDoAlmoco(r.l) : !lojaDoAlmoco(r.l)) return;
+      n++;
+    });
+    return n;
+  }
+  // o pedido cabe no filtro do KDS? (a Tela de Entregadores usa so a regra das 16h)
+  function foraDoFiltroLoja(loja) {
+    if (TELA_ENT) return horaSoPizza() && lojaDoAlmoco(loja);
+    return filtroKds() === 'pizza' ? lojaDoAlmoco(loja) : !lojaDoAlmoco(loja);
+  }
   function listaVisivel() {
     var ag = agoraPC(), lista = [];
     var soPizza = horaSoPizza();
@@ -389,7 +485,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       // DIA ligado no Gestor: o KDS mostra todos os pedidos; a Tela de Entregadores so entrega iFood, sempre
       var filtraIfood = TELA_ENT || (!estado.dia && estado.so !== 0);
       if (filtraIfood && r.md === 'propria') return;
-      if (soPizza && lojaDoAlmoco(r.l)) return;   // 23.4: depois das 16h so pizzaria
+      if (foraDoFiltroLoja(r.l)) return;   // 23.4/26.0: depois das 16h so pizzaria; no KDS vale o botao Almoco/Pizza
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       if (r.e === 'rota' || r.e === 'fim') return;   // saiu para entrega: some na hora
       if (!TELA_ENT && r.e === 'pronto') return;      // KDS: marcou PRONTO = some na hora (a cozinha ja acabou)
@@ -563,7 +659,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (!TELA_ENT) {   // KDS: os prontos nao aparecem na lista, mas o contador segue valendo
       prontos = 0;
       var soPz = horaSoPizza();
-      Object.keys(estado.pedidos).forEach(function (n) { var r = estado.pedidos[n]; if (r && r.e === 'pronto' && !r.z && !(estado.so !== 0 && !estado.dia && r.md === 'propria') && !(soPz && lojaDoAlmoco(r.l))) prontos++; });
+      Object.keys(estado.pedidos).forEach(function (n) { var r = estado.pedidos[n]; if (r && r.e === 'pronto' && !r.z && !(estado.so !== 0 && !estado.dia && r.md === 'propria') && !foraDoFiltroLoja(r.l)) prontos++; });
     }
     var d = new Date();
     var hora = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
@@ -574,7 +670,9 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (statusConexao !== 'conectado') { estadoTxt = statusConexao; ruim = true; }
     else if (ativos && semPC !== null && semPC >= 11) { estadoTxt = '⚠️ sem notícias do computador do Gestor há ' + semPC + ' min'; ruim = true; }
     else estadoTxt = 'ao vivo';
-    var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS') + '</span> &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
+    var fk = TELA_ENT ? '' : filtroKds();   // 26.0
+    var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS') + '</span>' +
+            (TELA_ENT ? '' : '<span class="altKds" title="toque para alternar"><span class="op' + (fk === 'almoco' ? ' on' : '') + '">🍛 ALMOÇO' + (fk !== 'almoco' && contarModoKds('almoco') ? ' <i>' + contarModoKds('almoco') + '</i>' : '') + '</span><span class="op' + (fk === 'pizza' ? ' on' : '') + '">🍕 PIZZA' + (fk !== 'pizza' && contarModoKds('pizza') ? ' <i>' + contarModoKds('pizza') + '</i>' : '') + '</span></span>') + ' &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
             ((TELA_ENT || (!estado.dia && estado.so !== 0)) ? ' &nbsp; <small style="color:#788">só entrega iFood</small>' : (estado.dia ? ' &nbsp; <small style="color:#788">DIA: todos os pedidos</small>' : '')) +
             (TELA_ENT ? ' &nbsp; <small style="color:#566">tela ' + window.innerWidth + '×' + window.innerHeight + '</small>' : '') + '</span>' +
             (TELA_ENT ? '<span class="som' + (somLiberado ? '' : ' off') + '">' + (vozTV ? '🗣️ voz: ' + esc(String(vozTV.name || 'pt').slice(0, 18)) : (somLiberado ? '🔊 sem voz em português na TV: toca sirene' : '🔇 toque na tela para ligar o som')) + '</span>' : '') +   // 25.6/25.7
@@ -693,6 +791,9 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var corpo = elTela.querySelector('.corpo');
     if (!corpo.__toque) {
       corpo.__toque = 1;
+      elTela.addEventListener('click', function (ev) {   // 26.0: botao Almoco/Pizza (o cabecalho e redesenhado, por isso o ouvinte fica na tela)
+        try { var t = ev.target; while (t && t !== elTela) { if (t.classList && t.classList.contains('altKds')) { alternarFiltroKds(); return; } t = t.parentNode; } } catch (e) {}
+      });
       corpo.addEventListener('click', function (ev) {
         return;   // os itens ficam sempre a vista
       });
