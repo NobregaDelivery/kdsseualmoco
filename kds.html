@@ -41,7 +41,8 @@ html.rolar .corpo .area{height:auto}
 .loja .tx{display:flex;flex-direction:column;min-width:0;gap:3px}
 .tg{display:flex;gap:3px;flex-direction:column;align-items:flex-start}   /* uma tag por linha (capacete / SITE / RETIRADA) */
 .tag{font-style:normal;font-size:12px;font-weight:bold;letter-spacing:.5px;padding:1px 7px;border-radius:4px;align-self:flex-start;white-space:nowrap}
-.tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff}.tag.rp{background:#ff8c00;color:#000}.tag.cw{background:#59327a;color:#f4edf7;font-size:13px;padding:2px 8px}
+.tag.ag{background:#1f3b66;color:#cfe0ff}.tag.ret{background:#6a4a0c;color:#ffe1a6}.tag.tb{background:#e11;color:#fff;font-size:13px;padding:2px 8px;animation:turboTrem .6s steps(1,end) infinite}   /* 26.3: TURBO vermelha com tremelique eletrico (opcao C) */
+@keyframes turboTrem{0%{box-shadow:0 0 4px #ff5,0 0 10px #f55;background:#e11}18%{box-shadow:0 0 10px #fff,0 0 18px #ff5;background:#ff3b3b}26%{box-shadow:0 0 3px #ff5;background:#c00}47%{box-shadow:0 0 12px #ff5,0 0 20px #f55;background:#f22}55%{box-shadow:0 0 2px #f55;background:#e11}72%{box-shadow:0 0 14px #fff;background:#ff4d4d}80%{box-shadow:0 0 5px #ff5;background:#e11}100%{box-shadow:0 0 4px #ff5,0 0 10px #f55;background:#e11}}.tag.rp{background:#ff8c00;color:#000}.tag.cw{background:#59327a;color:#f4edf7;font-size:13px;padding:2px 8px}
 .tag.ch{background:transparent;color:#e11;display:inline-flex;align-items:center;justify-content:center;line-height:1;padding:0;border-radius:0}.tag.ch svg{width:34px;height:26px;display:block}
 .bt{font-size:19px;font-weight:bold;text-align:center;border-radius:8px;padding:9px 0;letter-spacing:1px;color:#fff}
 .bt.preparo{background:#e67e22}.bt.pronto{background:#27ae60}.bt.saiu{background:#455;color:#cdd}.bt.cancelado{background:#8e2b2b}
@@ -689,6 +690,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       sel + ' .num{font-size:' + p(64) + ';line-height:' + p(52) + ';letter-spacing:' + p(-4) + '}' +
       sel + ' .tag{font-size:' + Math.max(8, Math.round(10 * f)) + 'px;padding:1px ' + p(4) + ';letter-spacing:.3px}' +   /* 23.9: tags maiores */
       sel + ' .tag.cw{font-size:' + Math.max(9, Math.round(14 * f)) + 'px;padding:' + p(2) + ' ' + p(7) + ';letter-spacing:.5px}' +   /* 23.9: SITE legivel na TV */
+      sel + ' .tag.tb{font-size:' + Math.max(9, Math.round(12 * f)) + 'px;padding:' + p(2) + ' ' + p(5) + ';letter-spacing:0}' +   /* 26.2: TURBO do mesmo tamanho */
       sel + ' .tag.ch{padding:0}' + sel + ' .tag.ch svg{width:' + p(34) + ';height:' + p(26) + '}' +   /* 24.7: capacete acompanha a escala */
       sel + ' .tm{font-size:' + p(20) + ';padding:' + p(7) + ' 0;border-radius:' + p(8) + '}' +
       sel + ' .tm.espera{font-size:' + p(18) + '}' + sel + ' .tm.feito{font-size:' + p(14) + ';letter-spacing:-.5px}' +
@@ -773,7 +775,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       var g = Number(r.g) || 0;
       var iniT = r.v ? Math.max(r.i || 0, g) : 0;
       var capacete = (TELA_ENT && r.ch && r.md !== 'retirada') ? '<i class="tag ch" title="entregador na loja">' + CAPACETE_SVG + '</i>' : '';   // 24.7
-      var tags = (r.cw ? '<i class="tag cw">SITE</i>' : '') + (r.tb ? '<i class="tag tb">⚡ TURBO</i>' : '') + (r.rp ? '<i class="tag rp">🚀 RÁPIDA</i>' : '') +
+      var tags = (r.cw ? '<i class="tag cw">SITE</i>' : '') + (r.tb ? '<i class="tag tb">⚡TURBO</i>' : '') + (r.rp ? '<i class="tag rp">🚀 RÁPIDA</i>' : '') +
                  (g ? '<i class="tag ag">AGENDADO' + (TELA_ENT ? '' : ' ' + esc(horaDoTs(g))) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
       var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
