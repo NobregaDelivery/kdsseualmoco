@@ -63,7 +63,8 @@ html.rolar .corpo .area{height:auto}
 .ger .frete{color:#ffd400;font-weight:bold}.ger .frete small,.ger .sd small{font-weight:normal;color:#9a8a3a}
 .ger .cupom{color:#8ab4ff}.ger .total{color:#aaa}.ger .total b{color:#eee}
 .ger .sd{color:#fff;background:#1a2a1a;border:1px solid #2b5c2b;border-radius:6px;padding:2px 8px}.ger .sd b{color:#7cff7c;font-size:16px}.ger .sd.ind{background:#2a1a1a;border-color:#5c2b2b;color:#f99}.ger .sd.espera{background:#222;border-color:#444;color:#999}
-body.ger .lista{columns:2}
+body.ger .lista{column-count:2}
+@media (max-width:1150px){ body.ger .lista{column-count:1} }   /* 26.5b: celular/tablet em pe = 1 coluna, como o KDS */
 .lista.c4 .num{font-size:32px}.lista.c4 .linha{grid-template-columns:92px 1fr 96px 104px}.lista.c4 .bt{font-size:16px}.lista.c4 .tm{font-size:18px}.lista.c4 .loja img,.lista.c4 .loja .sem{width:44px;height:44px}
 /* tablet em pe ou tela estreita: menos colunas */
 /* cada coluna precisa de ~560 px: tablet deitado (1280) = 2 colunas; em pe = 1 */
