@@ -56,6 +56,14 @@ html.rolar .corpo .area{height:auto}
 .it .obs{font-size:16px;font-weight:bold;color:#000;background:#ffd400;border-radius:5px;padding:2px 8px;margin:4px 0 0 30px;display:inline-block}
 .itens.nada{color:#788;font-size:15px}
 .rodape a{color:#8a7d45}
+/* 26.4: KDS GERENCIA — a linha extra do pedido */
+.ger{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;border-top:1px dashed #333;padding-top:5px;margin-top:2px;font-size:15px;color:#ccc}
+.ger .bairro{color:#fff;font-weight:bold;font-size:17px}.ger .bairro::before{content:'📍 '}
+.ger .modo{padding:2px 8px;border-radius:6px;font-size:13px;font-weight:bold}.ger .modo.ifood{background:#ea1d2c;color:#fff}.ger .modo.propria{background:#2b5c2b;color:#dfd}.ger .modo.cw{background:#59327a;color:#f4edf7}.ger .modo.ret{background:#6a4a0c;color:#ffe1a6}
+.ger .frete{color:#ffd400;font-weight:bold}.ger .frete small,.ger .sd small{font-weight:normal;color:#9a8a3a}
+.ger .cupom{color:#8ab4ff}.ger .total{color:#aaa}.ger .total b{color:#eee}
+.ger .sd{color:#fff;background:#1a2a1a;border:1px solid #2b5c2b;border-radius:6px;padding:2px 8px}.ger .sd b{color:#7cff7c;font-size:16px}.ger .sd.ind{background:#2a1a1a;border-color:#5c2b2b;color:#f99}.ger .sd.espera{background:#222;border-color:#444;color:#999}
+body.ger .lista{columns:2}
 .lista.c4 .num{font-size:32px}.lista.c4 .linha{grid-template-columns:92px 1fr 96px 104px}.lista.c4 .bt{font-size:16px}.lista.c4 .tm{font-size:18px}.lista.c4 .loja img,.lista.c4 .loja .sem{width:44px;height:44px}
 /* tablet em pe ou tela estreita: menos colunas */
 /* cada coluna precisa de ~560 px: tablet deitado (1280) = 2 colunas; em pe = 1 */
@@ -121,6 +129,7 @@ body.ent .lista.e1{column-count:1}body.ent .lista.e2{column-count:2}body.ent .li
     <select id="inTela" style="width:100%;font-size:20px;padding:10px 12px;border-radius:8px;border:1px solid #444;background:#000;color:#fff">
       <option value="kds">KDS — cozinha (com os itens do pedido)</option>
       <option value="entregadores">Tela de Entregadores (sem itens, com os agrupados ligados)</option>
+      <option value="gerencia">KDS Gerência (bairro, frete, cotação da entrega Sob Demanda)</option>
     </select>
     <button id="btSalvar">Começar</button>
     <small>Para voltar a esta tela depois, toque 5 vezes seguidas no relógio.</small>
@@ -145,10 +154,11 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // agrupados ligados). Vem do endereco (#tela=entregadores) ou da configuracao.
   var LS_TELA = 'painelNoite.tela';
   var mtl = (location.hash || '').match(/tela=([a-z]+)/i);
-  if (mtl) lsSet(LS_TELA, /entregador/i.test(mtl[1]) ? 'entregadores' : 'kds');
+  if (mtl) lsSet(LS_TELA, /entregador/i.test(mtl[1]) ? 'entregadores' : (/geren/i.test(mtl[1]) ? 'gerencia' : 'kds'));   // 26.4: #tela=gerencia
   // pagina do GitHub: esta e a TELA KDS. O #tela= no endereco pode trocar
   // so nesta abertura; a escolha guardada no aparelho nao vale aqui.
-  var TELA_ENT = mtl ? /entregador/i.test(mtl[1]) : false;
+  var TELA_GER = mtl ? /geren/i.test(mtl[1]) : false;   // 26.4: KDS GERENCIA (ger.html)
+  var TELA_ENT = !TELA_GER && (mtl ? /entregador/i.test(mtl[1]) : false);
   // trocar so o #sala= / #tela= no endereco (sem recarregar) tambem vale
   window.addEventListener('hashchange', function () { if (/sala=|tela=/.test(location.hash || '')) location.reload(); });
   function normSala(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, '-'); }
@@ -160,7 +170,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   function abrirConfig() {
     document.getElementById('inSala').value = sala;
     document.getElementById('inToken').value = token;
-    document.getElementById('inTela').value = TELA_ENT ? 'entregadores' : 'kds';
+    document.getElementById('inTela').value = TELA_GER ? 'gerencia' : (TELA_ENT ? 'entregadores' : 'kds');
     elConfig.hidden = false;
   }
   document.getElementById('btSalvar').addEventListener('click', function () {
@@ -168,7 +178,8 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (!s) { document.getElementById('inSala').focus(); return; }
     lsSet(LS_SALA, s);
     lsSet(LS_TOKEN, String(document.getElementById('inToken').value || '').trim());
-    lsSet(LS_TELA, document.getElementById('inTela').value === 'entregadores' ? 'entregadores' : 'kds');
+    var vTela = document.getElementById('inTela').value;
+    lsSet(LS_TELA, vTela === 'entregadores' ? 'entregadores' : (vTela === 'gerencia' ? 'gerencia' : 'kds'));
     location.hash = '';
     location.reload();
   });
@@ -193,12 +204,12 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // ESTADO: os pedidos que o PC mandou (guardado tambem no tablet,
   // para uma recarga nao zerar a tela)
   // ---------------------------------------------------------------
-  var estado = { pedidos: {}, so: 1, col: 3, ultimoPC: 0, vistos: {}, rotas: null, ngAvisados: {} };   // 25.6: ngAvisados = negociacoes ja avisadas nesta tela
+  var estado = { pedidos: {}, so: 1, col: 3, ultimoPC: 0, vistos: {}, rotas: null, ngAvisados: {}, ger: {} };   // 26.4: ger = dados do KDS Gerencia por pedido   // 25.6: ngAvisados = negociacoes ja avisadas nesta tela
   var rotasNomeEm = {};   // 23.7: rota -> quando o nome do entregador apareceu (some 30 s depois)
   var CAPACETE_SVG = '<svg viewBox="0 4.5 32 24.5" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="23" r="4.3"/><circle cx="25" cy="23" r="4.3"/><path d="M7.5 23h10l4.5-12h4"/><path d="M22 11l3 12"/><path d="M4.5 18h9"/></g><rect x="2" y="6.5" width="11" height="9" rx="1.6" fill="currentColor"/></svg>';   // 24.7: moto de entrega com bau (escolha do Breno)   // 24.7: entregador chegou na loja
   try {
     var salvo = JSON.parse(lsGet(LS_ESTADO) || 'null');
-    if (salvo && salvo.sala === sala && salvo.pedidos) { estado.pedidos = salvo.pedidos; estado.so = salvo.so; estado.col = salvo.col; estado.dia = salvo.dia ? 1 : 0; estado.ultimoPC = salvo.ultimoPC || 0; estado.desvioSalvo = salvo.desvio || 0; estado.rotas = salvo.rotas || null; estado.ngAvisados = salvo.ngAvisados || {}; }
+    if (salvo && salvo.sala === sala && salvo.pedidos) { estado.pedidos = salvo.pedidos; estado.so = salvo.so; estado.col = salvo.col; estado.dia = salvo.dia ? 1 : 0; estado.ultimoPC = salvo.ultimoPC || 0; estado.desvioSalvo = salvo.desvio || 0; estado.rotas = salvo.rotas || null; estado.ngAvisados = salvo.ngAvisados || {}; estado.ger = salvo.ger || {}; }
   } catch (e) {}
   var salvarPendente = false;
   function salvarEstado() {
@@ -206,7 +217,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     salvarPendente = true;
     setTimeout(function () {
       salvarPendente = false;
-      lsSet(LS_ESTADO, JSON.stringify({ sala: sala, pedidos: estado.pedidos, so: estado.so, col: estado.col, dia: estado.dia ? 1 : 0, ultimoPC: estado.ultimoPC, desvio: desvio, rotas: estado.rotas, ngAvisados: estado.ngAvisados }));
+      lsSet(LS_ESTADO, JSON.stringify({ sala: sala, pedidos: estado.pedidos, so: estado.so, col: estado.col, dia: estado.dia ? 1 : 0, ultimoPC: estado.ultimoPC, desvio: desvio, rotas: estado.rotas, ngAvisados: estado.ngAvisados, ger: estado.ger }));
     }, 1500);
   }
 
@@ -251,7 +262,23 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     salvarEstado();
     desenhar();
   }
+  // 26.4: o KDS Gerencia escuta tambem o topico <sala>-ger-ev: {t:'ger', ts, p:[{n, b, fr, tot, cu, ep, sd, q}]}
+  function aplicarGer(msg) {
+    if (msg.id) { if (estado.vistos[msg.id]) return; estado.vistos[msg.id] = 1; }
+    var ag = agoraPC();
+    (msg.p || []).forEach(function (c) {
+      if (!c || !c.n) return;
+      var at = estado.ger[c.n];
+      if (at && (at._ts || 0) > msg.ts) return;
+      c._ts = msg.ts;
+      estado.ger[c.n] = c;
+    });
+    Object.keys(estado.ger).forEach(function (n) { if (ag - (estado.ger[n]._ts || 0) > 8 * 3600000) delete estado.ger[n]; });
+    salvarEstado();
+    desenhar();
+  }
   function aplicar(msg, tempoServidorSeg) {
+    if (msg && msg.t === 'ger') return aplicarGer(msg);
     if (msg && msg.t === 'rotas') { if (msg.id) { if (estado.vistos[msg.id]) return; estado.vistos[msg.id] = 1; } return aplicarRotas(msg); }
     if (!msg || msg.t !== 'noite') return;
     if (msg.id) { if (estado.vistos[msg.id]) return; estado.vistos[msg.id] = 1; }
@@ -307,13 +334,17 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // ultima mensagem recebida.
   // ---------------------------------------------------------------
   var SERVIDORES = ['https://ntfy.sh', 'https://ntfy.envs.net'];
+  // 26.4: o KDS Gerencia escuta dois topicos; a chave 'servidor#ger' e a ligacao do segundo
+  if (TELA_GER) SERVIDORES = SERVIDORES.concat(SERVIDORES.map(function (x) { return x + '#ger'; }));
+  function baseDe(k) { return String(k).split('#')[0]; }
+  function topicoDe(k) { return sala + (/#ger$/.test(String(k)) ? '-ger-ev' : '-noite-ev'); }
   var conexoes = {};
   var ultimaAtividade = 0, statusConexao = 'conectando…';
   function urlSSE(srv) {
     var c = conexoes[srv] || {};
     var since = c.ultimoId || '6h';
-    var u = srv + '/' + encodeURIComponent(sala + '-noite-ev') + '/sse?since=' + encodeURIComponent(since);
-    if (token && srv === 'https://ntfy.sh') {
+    var u = baseDe(srv) + '/' + encodeURIComponent(topicoDe(srv)) + '/sse?since=' + encodeURIComponent(since);
+    if (token && baseDe(srv) === 'https://ntfy.sh') {
       try { u += '&auth=' + btoa('\u0000user\u0000' + token).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) {}
     }
     return u;
@@ -380,8 +411,8 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // recebida (since=id). O que a ligacao ao vivo perdeu entra por aqui.
   function urlPoll(srv) {
     var c = conexoes[srv] || {};
-    var u = srv + '/' + encodeURIComponent(sala + '-noite-ev') + '/json?poll=1&since=' + encodeURIComponent(c.ultimoId || '30m');
-    if (token && srv === 'https://ntfy.sh') {
+    var u = baseDe(srv) + '/' + encodeURIComponent(topicoDe(srv)) + '/json?poll=1&since=' + encodeURIComponent(c.ultimoId || (/#ger$/.test(srv) ? '6h' : '30m'));
+    if (token && baseDe(srv) === 'https://ntfy.sh') {
       try { u += '&auth=' + btoa('\u0000user\u0000' + token).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) {}
     }
     return u;
@@ -484,12 +515,12 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     Object.keys(estado.pedidos).forEach(function (n) {
       var r = estado.pedidos[n];
       // DIA ligado no Gestor: o KDS mostra todos os pedidos; a Tela de Entregadores so entrega iFood, sempre
-      var filtraIfood = TELA_ENT || (!estado.dia && estado.so !== 0);
+      var filtraIfood = !TELA_GER && (TELA_ENT || (!estado.dia && estado.so !== 0));   // 26.4: a Gerencia ve tudo
       if (filtraIfood && r.md === 'propria') return;
-      if (foraDoFiltroLoja(r.l)) return;   // 23.4/26.0: depois das 16h so pizzaria; no KDS vale o botao Almoco/Pizza
+      if (!TELA_GER && foraDoFiltroLoja(r.l)) return;   // 23.4/26.0: depois das 16h so pizzaria; no KDS vale o botao Almoco/Pizza
       var fora = (r.e === 'rota' || r.e === 'fim' || r.e === 'cancelado');
       if (r.e === 'rota' || r.e === 'fim') return;   // saiu para entrega: some na hora
-      if (!TELA_ENT && r.e === 'pronto') return;      // KDS: marcou PRONTO = some na hora (a cozinha ja acabou)
+      if (!TELA_ENT && !TELA_GER && r.e === 'pronto') return;      // KDS: marcou PRONTO = some na hora (a cozinha ja acabou); a Gerencia mostra
       if (TELA_ENT && r.mb) return;                   // 24.2: cliente Motoboy/Motogirl nao aparece na Tela de Entregadores
       if (fora && ag - (r.m || 0) > 90000) return;
       if (r.z && ag - r.z > 90000) return;
@@ -651,13 +682,35 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
              (x[3] ? '<div class="obs">⚠ ' + esc(x[3]) + '</div>' : '') + '</div>';
     }).join('') + '</div>';
   }
+  // 26.4: a linha do KDS GERENCIA: bairro, modalidade, frete/cupom/total e a cotacao da entrega Sob Demanda
+  function reais(v) { return 'R$ ' + (Number(v) || 0).toFixed(2).replace('.', ','); }
+  function htmlGer(r, ag) {
+    var g = estado.ger[r.n] || {};
+    var ep = g.ep || '', propria = ep === 'MERCHANT' && r.md !== 'retirada';
+    var modo = r.cw ? '<span class="modo cw">🌐 site</span>' : (r.md === 'retirada' ? '<span class="modo ret">🏪 retirada</span>' : (ep === 'IFOOD_LOGISTICS' ? '<span class="modo ifood">🛵 entrega iFood</span>' : (ep === 'MERCHANT' ? '<span class="modo propria">🏠 entrega própria</span>' : '')));
+    var sd = '';
+    if (propria) {
+      if (!g.sd) sd = '<span class="sd espera">⏳ cotando Sob Demanda…</span>';
+      else if (g.sd.err) sd = '<span class="sd ind">🛵 Sob Demanda: indisponível</span>';
+      else {
+        var idade = g.q ? Math.round((ag - g.q) / 60000) : 0;
+        var venceu = g.sd.x && ag > g.sd.x;
+        sd = '<span class="sd' + (venceu ? ' ind' : '') + '">🛵 Sob Demanda <b>' + reais(g.sd.v) + '</b>' + (g.sd.d ? ' <small>(de ' + reais(g.sd.g) + ')</small>' : '') + (g.sd.km ? ' · ' + String(g.sd.km).replace('.', ',') + ' km' : '') + ((g.sd.e1 || g.sd.e2) ? ' · chega em ' + g.sd.e1 + '–' + g.sd.e2 + ' min' : '') + (venceu ? ' · <small>cotação vencida</small>' : (idade >= 5 ? ' <small>(há ' + idade + ' min)</small>' : '')) + '</span>';
+      }
+    }
+    var frete = (g.fr != null && g.tot) ? '<span class="frete">frete ' + reais(g.fr) + (!Number(g.fr) ? ' <small>(grátis)</small>' : '') + '</span>' : '';
+    var cupom = g.cu ? '<span class="cupom">🎟 ' + esc(g.cu) + '</span>' : '';
+    var total = g.tot ? '<span class="total">total <b>' + reais(g.tot) + '</b></span>' : '';
+    if (!g.b && !modo && !frete && !sd) return '';
+    return '<div class="ger">' + (g.b ? '<span class="bairro">' + esc(g.b) + '</span>' : '') + modo + frete + cupom + total + sd + '</div>';
+  }
   function desenharCabecalho() {
     var cab = elTela.querySelector('.cab');
     if (!cab) return;
     var lista = listaVisivel();
     var emPreparo = lista.filter(function (r) { return r.e === 'preparo'; }).length;
     var prontos = lista.filter(function (r) { return r.e === 'pronto'; }).length;
-    if (!TELA_ENT) {   // KDS: os prontos nao aparecem na lista, mas o contador segue valendo
+    if (!TELA_ENT && !TELA_GER) {   // KDS: os prontos nao aparecem na lista, mas o contador segue valendo
       prontos = 0;
       var soPz = horaSoPizza();
       Object.keys(estado.pedidos).forEach(function (n) { var r = estado.pedidos[n]; if (r && r.e === 'pronto' && !r.z && !(estado.so !== 0 && !estado.dia && r.md === 'propria') && !foraDoFiltroLoja(r.l)) prontos++; });
@@ -672,9 +725,15 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     else if (ativos && semPC !== null && semPC >= 11) { estadoTxt = '⚠️ sem notícias do computador do Gestor há ' + semPC + ' min'; ruim = true; }
     else estadoTxt = 'ao vivo';
     var fk = TELA_ENT ? '' : filtroKds();   // 26.0
-    var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS') + '</span>' +
-            (TELA_ENT ? '' : '<span class="altKds" title="toque para alternar"><span class="op' + (fk === 'almoco' ? ' on' : '') + '">🍛 ALMOÇO' + (fk !== 'almoco' && contarModoKds('almoco') ? ' <i>' + contarModoKds('almoco') + '</i>' : '') + '</span><span class="op' + (fk === 'pizza' ? ' on' : '') + '">🍕 PIZZA' + (fk !== 'pizza' && contarModoKds('pizza') ? ' <i>' + contarModoKds('pizza') + '</i>' : '') + '</span></span>') + ' &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
-            ((TELA_ENT || (!estado.dia && estado.so !== 0)) ? ' &nbsp; <small style="color:#788">só entrega iFood</small>' : (estado.dia ? ' &nbsp; <small style="color:#788">DIA: todos os pedidos</small>' : '')) +
+    var resumoGer = '';
+    if (TELA_GER) {   // 26.4
+      var nIf = 0, nPr = 0, nSite = 0, nCot = 0, nInd = 0, somaSd = 0;
+      lista.forEach(function (r) { var g = estado.ger[r.n]; if (r.cw) nSite++; else if (g && g.ep === 'MERCHANT') nPr++; else nIf++; if (g && g.sd) { if (g.sd.err) nInd++; else { nCot++; somaSd += g.sd.v || 0; } } });
+      resumoGer = ' &nbsp; <small style="color:#9a8a3a">🛵 iFood ' + nIf + ' · 🏠 própria ' + nPr + (nSite ? ' · 🌐 site ' + nSite : '') + ' · Sob Demanda: ' + nCot + ' cotada(s)' + (nInd ? ', ' + nInd + ' indisponível' : '') + (nCot ? ' (R$ ' + somaSd.toFixed(2).replace('.', ',') + ')' : '') + '</small>';
+    }
+    var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_GER ? '📊 KDS GERÊNCIA' : (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS')) + '</span>' + resumoGer +
+            ((TELA_ENT || TELA_GER) ? '' : '<span class="altKds" title="toque para alternar"><span class="op' + (fk === 'almoco' ? ' on' : '') + '">🍛 ALMOÇO' + (fk !== 'almoco' && contarModoKds('almoco') ? ' <i>' + contarModoKds('almoco') + '</i>' : '') + '</span><span class="op' + (fk === 'pizza' ? ' on' : '') + '">🍕 PIZZA' + (fk !== 'pizza' && contarModoKds('pizza') ? ' <i>' + contarModoKds('pizza') + '</i>' : '') + '</span></span>') + ' &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
+            (TELA_GER ? '' : ((TELA_ENT || (!estado.dia && estado.so !== 0)) ? ' &nbsp; <small style="color:#788">só entrega iFood</small>' : (estado.dia ? ' &nbsp; <small style="color:#788">DIA: todos os pedidos</small>' : ''))) +
             (TELA_ENT ? ' &nbsp; <small style="color:#566">tela ' + window.innerWidth + '×' + window.innerHeight + '</small>' : '') + '</span>' +
             (TELA_ENT ? '<span class="som' + (somLiberado ? '' : ' off') + '">' + (vozTV ? '🗣️ voz: ' + esc(String(vozTV.name || 'pt').slice(0, 18)) : (somLiberado ? '🔊 sem voz em português na TV: toca sirene' : '🔇 toque na tela para ligar o som')) + '</span>' : '') +   // 25.6/25.7
             '<span class="estado' + (ruim ? ' ruim' : '') + '">' + esc(estadoTxt) + '</span>';
@@ -721,7 +780,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // nomeEm: mapa persistente seq -> quando o nome do entregador apareceu
   // Regra do Breno (04/10): a rota some 30 s depois de aparecer o nome do entregador.
   function htmlRotas(rotas, agora, nomeEm, esc, horaDoTs) {
-    var SOME_MS = 180000;   // 23.9: 3 min depois de alocada ao entregador
+    var SOME_MS = 90000;   // 23.9: 3 min depois de alocada ao entregador; 26.4: 90 s
     var vis = [];
     (rotas || []).forEach(function (r0) {
       if (!r0 || !r0.p) return;
@@ -786,6 +845,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
               '<div class="tx"><span>' + esc(r.l || '') + '</span>' + ((tags || capacete) ? '<div class="tg">' + capacete + tags + '</div>' : '') + '</div></div>' +
               '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-meta="' + metaDe(r) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
               '<div class="bt ' + classe(r.e) + '">' + rotulo(r.e) + '</div>' +
+              (TELA_GER ? htmlGer(r, agoraR) : '') +   // 26.4
               ((!TELA_ENT && r.it && r.it.length) ? htmlItens(r.it) : '') + '</div>';
     });
     html += '</div>' + (TELA_ENT ? '</div>' : '');
@@ -885,7 +945,8 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   document.head.appendChild(estiloCorpo);
   if (!sala) { abrirConfig(); return; }
   elTela.querySelector('.salaTxt').textContent = 'sala: ' + sala;
-  if (TELA_ENT) { document.body.className = 'ent'; try { document.title = '🛵 Tela de Entregadores'; } catch (e) {} }
+  if (TELA_GER) { document.body.className = 'ger'; try { document.title = '📊 KDS Gerência'; } catch (e) {} }
+  else if (TELA_ENT) { document.body.className = 'ent'; try { document.title = '🛵 Tela de Entregadores'; } catch (e) {} }
   else { try { document.title = '🍳 KDS'; } catch (e) {} }
   desenhar();
   SERVIDORES.forEach(conectar);
