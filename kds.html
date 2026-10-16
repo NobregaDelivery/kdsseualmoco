@@ -523,6 +523,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       if (r.e === 'rota' || r.e === 'fim') return;   // saiu para entrega: some na hora
       if (!TELA_ENT && !TELA_GER && r.e === 'pronto') return;      // KDS: marcou PRONTO = some na hora (a cozinha ja acabou); a Gerencia mostra
       if (TELA_ENT && r.mb) return;                   // 24.2: cliente Motoboy/Motogirl nao aparece na Tela de Entregadores
+      if (TELA_GER && (fora || r.z)) return;   // 27.4: a Gerencia nao esmaece — saiu/sumiu/cancelou = some na hora
       if (fora && ag - (r.m || 0) > 90000) return;
       if (r.z && ag - r.z > 90000) return;
       lista.push(r);
