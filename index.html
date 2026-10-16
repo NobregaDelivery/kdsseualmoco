@@ -688,7 +688,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   function htmlGer(r, ag) {
     var g = estado.ger[r.n] || {};
     var ep = g.ep || '', propria = ep === 'MERCHANT' && r.md !== 'retirada';
-    var modo = r.cw ? '' : (r.md === 'retirada' ? '<span class="modo ret">🏪 retirada</span>' : (ep === 'IFOOD_LOGISTICS' ? '<span class="modo ifood">🛵 entrega iFood</span>' : (ep === 'MERCHANT' ? '<span class="modo propria">🏠 entrega própria</span>' : '')));
+    var modo = r.cw ? '' : (r.md === 'retirada' ? '<span class="modo ret">🏪 retirada</span>' : (ep === 'IFOOD_LOGISTICS' ? '<span class="modo ifood">🛵 iFood</span>' : (ep === 'MERCHANT' ? '<span class="modo propria">🏍️ Própria</span>' : '')));
     var sd = '';
     if (propria) {
       if (!g.sd) sd = '<span class="sd espera">⏳ cotando Sob Demanda…</span>';
@@ -730,7 +730,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (TELA_GER) {   // 26.4
       var nIf = 0, nPr = 0, nSite = 0, nCot = 0, nInd = 0, somaSd = 0;
       lista.forEach(function (r) { var g = estado.ger[r.n]; if (r.cw) nSite++; else if (g && g.ep === 'MERCHANT') nPr++; else nIf++; if (g && g.sd) { if (g.sd.err) nInd++; else { nCot++; somaSd += g.sd.v || 0; } } });
-      resumoGer = ' &nbsp; <small style="color:#9a8a3a">🛵 iFood ' + nIf + ' · 🏠 própria ' + nPr + (nSite ? ' · 🌐 site ' + nSite : '') + ' · Sob Demanda: ' + nCot + ' cotada(s)' + (nInd ? ', ' + nInd + ' indisponível' : '') + (nCot ? ' (R$ ' + somaSd.toFixed(2).replace('.', ',') + ')' : '') + '</small>';
+      resumoGer = ' &nbsp; <small style="color:#9a8a3a">🛵 iFood ' + nIf + ' · 🏍️ própria ' + nPr + (nSite ? ' · 🌐 site ' + nSite : '') + ' · Sob Demanda: ' + nCot + ' cotada(s)' + (nInd ? ', ' + nInd + ' indisponível' : '') + (nCot ? ' (R$ ' + somaSd.toFixed(2).replace('.', ',') + ')' : '') + '</small>';
     }
     var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_GER ? '📊 KDS GERÊNCIA' : (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS')) + '</span>' + resumoGer +
             ((TELA_ENT || TELA_GER) ? '' : '<span class="altKds" title="toque para alternar"><span class="op' + (fk === 'almoco' ? ' on' : '') + '">🍛 ALMOÇO' + (fk !== 'almoco' && contarModoKds('almoco') ? ' <i>' + contarModoKds('almoco') + '</i>' : '') + '</span><span class="op' + (fk === 'pizza' ? ' on' : '') + '">🍕 PIZZA' + (fk !== 'pizza' && contarModoKds('pizza') ? ' <i>' + contarModoKds('pizza') + '</i>' : '') + '</span></span>') + ' &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
