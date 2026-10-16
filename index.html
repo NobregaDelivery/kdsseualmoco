@@ -62,7 +62,7 @@ html.rolar .corpo .area{height:auto}
 .ger .modo{padding:2px 8px;border-radius:6px;font-size:13px;font-weight:bold}.ger .modo.ifood{background:#ea1d2c;color:#fff}.ger .modo.propria{background:#2b5c2b;color:#dfd}.ger .modo.cw{background:#59327a;color:#f4edf7}.ger .modo.ret{background:#6a4a0c;color:#ffe1a6}
 .ger .frete{color:#ffd400;font-weight:bold}.ger .frete small,.ger .sd small{font-weight:normal;color:#9a8a3a}
 .ger .cupom{color:#8ab4ff}.ger .total{color:#aaa}.ger .total b{color:#eee}
-.ger .sd{color:#fff;background:#1a2a1a;border:1px solid #2b5c2b;border-radius:6px;padding:2px 8px}.ger .sd b{color:#7cff7c;font-size:16px}.ger .sd.ind{background:#2a1a1a;border-color:#5c2b2b;color:#f99}.ger .sd.espera{background:#222;border-color:#444;color:#999}
+.ger .sd{color:#fff;background:#1a2a1a;border:1px solid #2b5c2b;border-radius:6px;padding:2px 8px}.ger .sd b{color:#7cff7c;font-size:16px}.ger .sd.ind{background:#2a1a1a;border-color:#5c2b2b;color:#f99}.ger .sd.espera{background:#222;border-color:#444;color:#999}.ger .sd.pedida{background:#1a2338;border-color:#3b5998;color:#cfe0ff}
 body.ger .lista{column-count:2}
 @media (max-width:1150px){ body.ger .lista{column-count:1} }   /* 26.5b: celular/tablet em pe = 1 coluna, como o KDS */
 .lista.c4 .num{font-size:32px}.lista.c4 .linha{grid-template-columns:92px 1fr 96px 104px}.lista.c4 .bt{font-size:16px}.lista.c4 .tm{font-size:18px}.lista.c4 .loja img,.lista.c4 .loja .sem{width:44px;height:44px}
@@ -690,7 +690,9 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var ep = g.ep || '', propria = ep === 'MERCHANT' && r.md !== 'retirada';
     var modo = r.cw ? '' : (r.md === 'retirada' ? '<span class="modo ret">🏪 retirada</span>' : (ep === 'IFOOD_LOGISTICS' ? '<span class="modo ifood">🛵 iFood</span>' : (ep === 'MERCHANT' ? '<span class="modo propria">🏍️ Própria</span>' : '')));
     var sd = '';
-    if (propria) {
+    var pedida = !!(g.sp || (g.sd && g.sd.err === 2));   // 27.3: Sob Demanda ja chamado para este pedido
+    if (pedida) sd = '<span class="sd pedida">🛵 Demanda solicitada</span>';
+    else if (propria) {
       if (!g.sd) sd = '<span class="sd espera">⏳ cotando Sob Demanda…</span>';
       else if (g.sd.err) sd = '<span class="sd ind">🛵 Sob Demanda: indisponível</span>';
       else {
@@ -728,9 +730,9 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     var fk = TELA_ENT ? '' : filtroKds();   // 26.0
     var resumoGer = '';
     if (TELA_GER) {   // 26.4
-      var nIf = 0, nPr = 0, nSite = 0, nCot = 0, nInd = 0, somaSd = 0;
-      lista.forEach(function (r) { var g = estado.ger[r.n]; if (r.cw) nSite++; else if (g && g.ep === 'MERCHANT') nPr++; else nIf++; if (g && g.sd) { if (g.sd.err) nInd++; else { nCot++; somaSd += g.sd.v || 0; } } });
-      resumoGer = ' &nbsp; <small style="color:#9a8a3a">🛵 iFood ' + nIf + ' · 🏍️ própria ' + nPr + (nSite ? ' · 🌐 site ' + nSite : '') + ' · Sob Demanda: ' + nCot + ' cotada(s)' + (nInd ? ', ' + nInd + ' indisponível' : '') + (nCot ? ' (R$ ' + somaSd.toFixed(2).replace('.', ',') + ')' : '') + '</small>';
+      var nIf = 0, nPr = 0, nSite = 0, nCot = 0, nInd = 0, nPed = 0, somaSd = 0;
+      lista.forEach(function (r) { var g = estado.ger[r.n]; if (r.cw) nSite++; else if (g && g.ep === 'MERCHANT') nPr++; else nIf++; if (g && (g.sp || (g.sd && g.sd.err === 2))) nPed++; else if (g && g.sd) { if (g.sd.err) nInd++; else { nCot++; somaSd += g.sd.v || 0; } } });
+      resumoGer = ' &nbsp; <small style="color:#9a8a3a">🛵 iFood ' + nIf + ' · 🏍️ própria ' + nPr + (nSite ? ' · 🌐 site ' + nSite : '') + ' · Sob Demanda: ' + nCot + ' cotada(s)' + (nInd ? ', ' + nInd + ' indisponível' : '') + (nPed ? ', ' + nPed + ' solicitada(s)' : '') + (nCot ? ' (R$ ' + somaSd.toFixed(2).replace('.', ',') + ')' : '') + '</small>';
     }
     var h = '<span><b class="relogio">' + hora + '</b><span class="qualTela">' + (TELA_GER ? '📊 KDS GERÊNCIA' : (TELA_ENT ? '🛵 ENTREGADORES' : '🍳 KDS')) + '</span>' + resumoGer +
             ((TELA_ENT || TELA_GER) ? '' : '<span class="altKds" title="toque para alternar"><span class="op' + (fk === 'almoco' ? ' on' : '') + '">🍛 ALMOÇO' + (fk !== 'almoco' && contarModoKds('almoco') ? ' <i>' + contarModoKds('almoco') + '</i>' : '') + '</span><span class="op' + (fk === 'pizza' ? ' on' : '') + '">🍕 PIZZA' + (fk !== 'pizza' && contarModoKds('pizza') ? ' <i>' + contarModoKds('pizza') + '</i>' : '') + '</span></span>') + ' &nbsp; 🔥 ' + emPreparo + ' em preparo &nbsp; ✅ ' + prontos + ' prontos' +
