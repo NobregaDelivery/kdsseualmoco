@@ -27,6 +27,8 @@ html.rolar .corpo .area{height:auto}
 .linha{display:grid;grid-template-columns:112px 1fr 112px 120px;align-items:center;gap:10px;background:#0c0c0c;border:1px solid #222;border-radius:10px;padding:6px 12px;min-height:56px;margin-bottom:8px;break-inside:avoid;-webkit-column-break-inside:avoid}
 .linha.sumiu{opacity:.35}
 @keyframes negPisca{0%,100%{background:#e11;border-color:#e11}50%{background:#0c0c0c;border-color:#222}}.linha.neg{animation:negPisca 1s steps(1,end) infinite}.cab .som{font-size:15px;color:#bba35a;white-space:nowrap}.cab .som.off{color:#ff6b6b}   /* 25.6: negociacao em aberto */
+/* 27.5: Super Cliente — numero dourado e a estrelinha colada no vao entre o numero e a logo (nada sai do lugar) */
+.num{position:relative}.num.super{color:#ffd400}.num .sc{position:absolute;right:-9px;top:50%;transform:translateY(-50%);font-size:15px;font-style:normal;line-height:1;filter:drop-shadow(0 0 2px #000)}
 .num{font-family:Consolas,Menlo,'Roboto Mono',monospace;font-size:40px;font-weight:bold;letter-spacing:1px;color:#fff}
 .loja{display:flex;align-items:center;gap:12px;min-width:0}
 .loja img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#222;flex:none}
@@ -844,7 +846,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
       var ngAttr = (TELA_ENT && estado.ngAvisados[r.n]) ? ' data-neg="' + estado.ngAvisados[r.n] + '"' : '';   // 25.6
       html += '<div class="linha' + (fora || r.z ? ' sumiu' : '') + (aberta ? ' aberta' : '') + '" data-n="' + esc(r.n) + '"' + gAttr + ngAttr + '>' +
-              '<div class="num">' + esc(r.d || r.n) + '</div>' +
+              '<div class="num' + (!TELA_ENT && r.sc ? ' super' : '') + '">' + esc(r.d || r.n) + (!TELA_ENT && r.sc ? '<i class="sc" title="Super Cliente">⭐</i>' : '') + '</div>' +   // 27.5: Super Cliente (KDS e Gerencia)
               '<div class="loja">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : '<div class="sem">' + esc(iniciais) + '</div>') +
               '<div class="tx"><span>' + esc(r.l || '') + '</span>' + ((tags || capacete) ? '<div class="tg">' + capacete + tags + '</div>' : '') + '</div></div>' +
               '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-meta="' + metaDe(r) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
