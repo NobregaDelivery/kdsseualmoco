@@ -34,7 +34,8 @@ html.rolar .corpo .area{height:auto}
 .loja img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#222;flex:none}
 .loja .sem{width:52px;height:52px;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;flex:none}
 .loja span{font-size:17px;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm{font-family:Consolas,Menlo,'Roboto Mono',monospace;font-size:21px;font-weight:bold;text-align:center;white-space:nowrap;border:2px solid #ffd400;color:#ffd400;background:#000;border-radius:8px;padding:7px 0}
+.tm{font-family:Consolas,Menlo,'Roboto Mono',monospace;font-size:21px;font-weight:bold;text-align:center;white-space:nowrap;border:2px solid #ddd;color:#fff;background:#000;border-radius:8px;padding:7px 0}   /* 27.7: branco no comeco */
+.tm.aviso{border-color:#ffd400;color:#ffd400}   /* 27.7: faltam 7 min */
 .tm.estourou{background:#e11;border-color:#e11;color:#000}
 .tm.feito{border-color:#2a2a2a;color:#666;font-size:16px}
 .tm.nada{border-color:transparent}
@@ -466,9 +467,11 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   var META_S = 7 * 60;
   var QUASE_S = 30 * 60;   // 25.4: agendado 'chegando': 30 min antes do preparo
   // DIA + entrega propria = metade do prazo do cartao do Gestor ("Entregar em 30min" -> 15 min)
-  function metaDe(r) {
-    if (r.cw && Number(r.pz) > 0) return Number(r.pz) * 60;   // 23.6: pedido do site = tempo de preparo original
-    if (estado.dia && r.md === 'propria' && Number(r.pz) > 0) return Math.max(60, Math.ceil(Number(r.pz) / 2) * 60);
+  // 27.7: o prazo de verdade do Gestor (pa = hora-limite), sem metade; site = 15 min a menos (60 -> 45); sem prazo = 7 min
+  var AVISO_S = 7 * 60;   // 27.7: amarelo a 7 min do fim
+  function metaDe(r, iniT) {
+    if (r.cw && Number(r.pz) > 0) return Math.max(60, (Number(r.pz) - 15) * 60);
+    if (Number(r.pa) > 0 && iniT) return Math.round((Number(r.pa) - iniT) / 1000);
     return META_S;
   }
   // 23.4: das 16h as 5h so pizzaria (as lojas do almoco somem do KDS as 16h)
@@ -849,7 +852,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
               '<div class="num' + (!TELA_ENT && r.sc ? ' super' : '') + '">' + esc(r.d || r.n) + (!TELA_ENT && r.sc ? '<i class="sc" title="Super Cliente">⭐</i>' : '') + '</div>' +   // 27.5: Super Cliente (KDS e Gerencia)
               '<div class="loja">' + (logo ? '<img src="' + esc(logo) + '" alt="">' : '<div class="sem">' + esc(iniciais) + '</div>') +
               '<div class="tx"><span>' + esc(r.l || '') + '</span>' + ((tags || capacete) ? '<div class="tg">' + capacete + tags + '</div>' : '') + '</div></div>' +
-              '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-meta="' + metaDe(r) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
+              '<div class="tm" data-ini="' + iniT + '" data-fim="' + (r.v && r.f ? r.f : 0) + '" data-meta="' + metaDe(r, iniT) + '" data-ag="' + (r.e === 'preparo' ? g : 0) + '" data-parado="' + ((r.e !== 'preparo' && !(r.v && r.f)) ? 1 : 0) + '"></div>' +
               '<div class="bt ' + classe(r.e) + '">' + rotulo(r.e) + '</div>' +
               (TELA_GER ? htmlGer(r, agoraR) : '') +   // 26.4
               ((!TELA_ENT && r.it && r.it.length) ? htmlItens(r.it) : '') + '</div>';
@@ -907,7 +910,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
         var rest = Math.round(metaS - (ag - ini) / 1000);
         if (rest === 0) rest = 0;
         txt = textoTimer(rest);
-        cls = rest < 0 ? 'tm estourou' : 'tm';
+        cls = rest < 0 ? 'tm estourou' : (rest <= AVISO_S ? 'tm aviso' : 'tm');   // 27.7: branco -> amarelo (7 min) -> vermelho
       }
       if (el.textContent !== txt) el.textContent = txt;
       if (el.className !== cls) el.className = cls;
@@ -944,7 +947,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // INICIO
   // ---------------------------------------------------------------
   elTela.innerHTML = '<div class="cab"></div><div class="corpo" style="flex:1;min-height:0;display:flex;flex-direction:column"></div>' +
-                     '<div class="rodape"><span>Ordem pela hora do aceite. Timer de 7 min desde que o pedido entrou no painel; vermelho = passou do tempo.</span><span class="salaTxt"></span></div>';
+                     '<div class="rodape"><span>Ordem pela hora do aceite. Timer = prazo do Gestor (site: 15 min a menos); amarelo = faltam 7 min; vermelho = passou do tempo.</span><span class="salaTxt"></span></div>';
   // a lista precisa ocupar a altura toda para as colunas funcionarem
   var estiloCorpo = document.createElement('style');
   estiloCorpo.textContent = '.corpo .lista{height:100%}.corpo .area{height:100%}.corpo .meio{height:100%}';
