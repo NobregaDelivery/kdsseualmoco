@@ -135,6 +135,15 @@ body.ent .lista.e1{column-count:1}body.ent .lista.e2{column-count:2}body.ent .li
       <option value="entregadores">Tela de Entregadores (sem itens, com os agrupados ligados)</option>
       <option value="gerencia">KDS Gerência (bairro, frete, cotação da entrega Sob Demanda)</option>
     </select>
+    <label for="inGrande">Tela de Entregadores — modo GRANDE (metade das colunas, tudo maior) enquanto houver poucos pedidos</label>
+    <select id="inGrande" style="width:100%;font-size:20px;padding:10px 12px;border-radius:8px;border:1px solid #444;background:#000;color:#fff">
+      <option value="0">desligado (sempre o formato normal)</option>
+      <option value="4">até 4 pedidos na tela</option>
+      <option value="6">até 6 pedidos na tela</option>
+      <option value="8">até 8 pedidos na tela</option>
+      <option value="10">até 10 pedidos na tela</option>
+      <option value="12">até 12 pedidos na tela</option>
+    </select>
     <button id="btSalvar">Começar</button>
     <small>Para voltar a esta tela depois, toque 5 vezes seguidas no relógio.</small>
   </div>
@@ -169,12 +178,16 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   var sala = normSala(lsGet(LS_SALA));
   var token = String(lsGet(LS_TOKEN) || '').trim();
 
+  // 27.8: modo GRANDE da Tela de Entregadores — ate quantos pedidos (0 = desligado); padrao 6
+  var LS_ENT_GRANDE = 'painelNoite.entGrande';
+  function entGrandeAte() { var v = parseInt(lsGet(LS_ENT_GRANDE) || '', 10); return isNaN(v) ? 6 : Math.max(0, v); }
   var elTela = document.getElementById('tela');
   var elConfig = document.getElementById('config');
   function abrirConfig() {
     document.getElementById('inSala').value = sala;
     document.getElementById('inToken').value = token;
     document.getElementById('inTela').value = TELA_GER ? 'gerencia' : (TELA_ENT ? 'entregadores' : 'kds');
+    document.getElementById('inGrande').value = String(entGrandeAte());   // 27.8
     elConfig.hidden = false;
   }
   document.getElementById('btSalvar').addEventListener('click', function () {
@@ -184,6 +197,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     lsSet(LS_TOKEN, String(document.getElementById('inToken').value || '').trim());
     var vTela = document.getElementById('inTela').value;
     lsSet(LS_TELA, vTela === 'entregadores' ? 'entregadores' : (vTela === 'gerencia' ? 'gerencia' : 'kds'));
+    lsSet(LS_ENT_GRANDE, String(parseInt(document.getElementById('inGrande').value, 10) || 0));   // 27.8
     location.hash = '';
     location.reload();
   });
@@ -772,10 +786,11 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       sel + ' .rvazio{font-size:' + p(20) + '}';
   }
   var escalaEntAtual = '';
-  function aplicarEscalaEnt(lg, nCol) {
+  function aplicarEscalaEnt(lg, nCol, fMax) {
     try {
-      // 4 colunas de ~473px cabem em 1920 (f=1); a partir dai tudo encolhe junto com a tela
-      var f = Math.min(1, Math.max(0.45, (lg - 28) / (473 * nCol)));
+      // 4 colunas de ~473px cabem em 1920 (f=1); a partir dai tudo encolhe junto com a tela.
+      // 27.8: no modo GRANDE (metade das colunas) o tamanho pode chegar a 2x (fMax = 2)
+      var f = Math.min(fMax || 1, Math.max(0.45, (lg - 28) / (473 * nCol)));
       var chave = f.toFixed(3) + '/' + nCol;
       if (chave === escalaEntAtual) return;
       escalaEntAtual = chave;
@@ -830,8 +845,10 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     if (TELA_ENT) {
       // 23.2: SEMPRE 4 colunas (a partir de 1150px); os tamanhos acompanham a largura da tela
       var lg = window.innerWidth;
-      if (dividida) { nCol = lg >= 700 ? 2 : 1; aplicarEscalaEnt(Math.floor(lg / 2) - 8, nCol); }
-      else { nCol = lg >= 1150 ? 4 : (lg >= 700 ? 2 : 1); aplicarEscalaEnt(lg, nCol); }
+      // 27.8: poucos pedidos = modo GRANDE: metade das colunas e tudo ate 2x maior; enchendo, volta ao normal
+      var grande = entGrandeAte() > 0 && lista.length <= entGrandeAte();
+      if (dividida) { nCol = lg >= 700 ? 2 : 1; if (grande) nCol = 1; aplicarEscalaEnt(Math.floor(lg / 2) - 8, nCol, grande ? 2 : 1); }
+      else { nCol = lg >= 1150 ? 4 : (lg >= 700 ? 2 : 1); if (grande && nCol > 1) nCol = nCol / 2; aplicarEscalaEnt(lg, nCol, grande ? 2 : 1); }
     }
     if (dividida) html += '<div class="meio">';
     html += (TELA_ENT ? '<div class="area"><svg class="lig"></svg>' : '') + '<div class="lista ' + (TELA_ENT ? 'e' : 'c') + nCol + '">';
