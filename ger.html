@@ -550,6 +550,8 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     lista.sort(function (a, b) { return (a.a || 0) - (b.a || 0) || String(a.n).localeCompare(String(b.n)); });
     // 25.6: Tela de Entregadores — os PRONTOS ficam juntos, no comeco, na ordem em que ficaram prontos
     if (TELA_ENT) lista.sort(function (a, b) { var pa = a.e === 'pronto' ? 0 : 1, pb = b.e === 'pronto' ? 0 : 1; if (pa !== pb) return pa - pb; if (!pa) return (a.f || 0) - (b.f || 0); return 0; });
+    // 27.9: KDS da cozinha — os pedidos do SITE (Cardapio Web) ficam juntos no topo, sempre; entre eles e entre os demais vale a ordem de chegada
+    if (!TELA_ENT && !TELA_GER) lista.sort(function (a, b) { return (b.cw ? 1 : 0) - (a.cw ? 1 : 0); });
     return lista;
   }
   var ultimoHtml = '';
