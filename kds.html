@@ -55,6 +55,7 @@ html.rolar .corpo .area{height:auto}
 .linha.aberta{border-color:#ffd400}
 .itens{grid-column:1/-1;border-top:1px dashed #444;padding:8px 2px 4px;display:flex;flex-direction:column;gap:8px}
 .it{font-size:20px;color:#fff;line-height:1.25}.it b{color:#ffd400;margin-right:4px}
+.it .tag.dup{display:inline-block;vertical-align:middle;margin-left:10px;font-size:13px;padding:2px 8px;border-radius:5px;font-weight:bold;font-style:normal;letter-spacing:.3px}   /* 28.1: item separado de um "Nx" */
 .it .op{font-size:15px;color:#bbb;margin:2px 0 0 30px}
 .it .obs{font-size:16px;font-weight:bold;color:#000;background:#ffd400;border-radius:5px;padding:2px 8px;margin:4px 0 0 30px;display:inline-block}
 .itens.nada{color:#788;font-size:15px}
@@ -484,6 +485,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   // 27.7: o prazo de verdade do Gestor (pa = hora-limite), sem metade; site = 15 min a menos (60 -> 45); sem prazo = 7 min
   var AVISO_S = 7 * 60;   // 27.7: amarelo a 7 min do fim
   function metaDe(r, iniT) {
+    if (Number(r.g) > 0 && Number(r.ap) > iniT && iniT) return Math.round((Number(r.ap) - iniT) / 1000);   // 28.3: agendado: o relogio corre ate a hora marcada
     if (r.cw && Number(r.pz) > 0) return Math.max(60, (Number(r.pz) - 15) * 60);
     if (Number(r.pa) > 0 && iniT) return Math.round((Number(r.pa) - iniT) / 1000);
     return META_S;
@@ -699,8 +701,18 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   window.addEventListener('resize', function () { if (TELA_ENT) { ultimoHtml = ''; try { desenhar(); } catch (e) {} ligarAgrupados(); } });
   function htmlItens(its) {
     if (!its || !its.length) return '<div class="itens nada">itens ainda não recebidos</div>';
+    // 28.0: no KDS da cozinha, "2x Pizza" vira duas linhas "1x Pizza" — cada pizza separada (ate 12 por item)
+    if (!TELA_GER) {
+      var sep = [];
+      its.forEach(function (x) {
+        var q = parseInt(x[0], 10);
+        if (q > 1 && q <= 12) { for (var k = 0; k < q; k++) sep.push([1, x[1], x[2], x[3], q]); }   // 28.1: o 5o campo = veio de um "Nx" (atencao)
+        else sep.push(x);
+      });
+      its = sep;
+    }
     return '<div class="itens">' + its.map(function (x) {
-      return '<div class="it"><b>' + esc(x[0]) + 'x</b>' + esc(x[1]) +
+      return '<div class="it"><b>' + esc(x[0]) + 'x</b>' + esc(x[1]) + (x[4] ? '<i class="tag tb dup" title="este item veio como ' + esc(x[4]) + 'x no pedido">⚠ ATENÇÃO</i>' : '') +   // 28.1: pizza separada de um "Nx" = atencao vermelha piscando (igual TURBO)
              (x[2] ? '<div class="op">' + esc(x[2]) + '</div>' : '') +
              (x[3] ? '<div class="obs">⚠ ' + esc(x[3]) + '</div>' : '') + '</div>';
     }).join('') + '</div>';
@@ -863,7 +875,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       var iniT = r.v ? Math.max(r.i || 0, g) : 0;
       var capacete = (TELA_ENT && r.ch && r.md !== 'retirada') ? '<i class="tag ch" title="entregador na loja">' + CAPACETE_SVG + '</i>' : '';   // 24.7
       var tags = (r.cw ? '<i class="tag cw">SITE</i>' : '') + (r.tb ? '<i class="tag tb">⚡TURBO</i>' : '') + (r.rp ? '<i class="tag rp">🚀 RÁPIDA</i>' : '') +
-                 (g ? '<i class="tag ag">AGENDADO' + (TELA_ENT ? '' : ' ' + esc(horaDoTs(g))) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
+                 (g ? '<i class="tag ag">AGENDADO' + (TELA_ENT ? '' : ' PARA ' + esc(horaDoTs(Number(r.ap) || g))) + '</i>' : '') + (r.md === 'retirada' ? '<i class="tag ret">RETIRADA</i>' : '');
       var aberta = !!abertos[r.n];
       var gAttr = (TELA_ENT && r.gr) ? ' data-g="' + esc(r.gr) + '"' : '';
       var ngAttr = (TELA_ENT && estado.ngAvisados[r.n]) ? ' data-neg="' + estado.ngAvisados[r.n] + '"' : '';   // 25.6
