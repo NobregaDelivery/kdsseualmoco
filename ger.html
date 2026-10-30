@@ -98,9 +98,11 @@ body.ent .rotasLista{flex:1;min-height:0;column-count:2;column-gap:14px;column-f
 body.ent .rota{background:#0c0c0c;border:1px solid #2a2a2a;border-radius:10px;padding:8px 12px 10px;margin-bottom:10px;break-inside:avoid;-webkit-column-break-inside:avoid}
 body.ent .rota.saiu{border-color:#1f6b3a}
 body.ent .rota .topo{display:flex;align-items:center;justify-content:space-between;gap:10px}
-body.ent .nrota{font-family:Consolas,Menlo,'Roboto Mono',monospace;font-weight:bold;color:#fff;white-space:nowrap}
-body.ent .nrota small{font-family:Segoe UI,Arial,sans-serif;color:#bba35a;font-weight:normal;margin-right:6px;letter-spacing:1px}
-body.ent .st{font-weight:bold;border-radius:8px;text-align:right;white-space:nowrap}
+body.ent .rotasLista.r1{column-count:1}   /* 28.4: modo GRANDE com poucas rotas = 1 coluna */
+body.ent .nrota{font-family:Consolas,Menlo,'Roboto Mono',monospace;font-weight:bold;color:#fff;white-space:nowrap;line-height:1;flex:none}
+body.ent .nrota small{display:block;font-family:Segoe UI,Arial,sans-serif;color:#bba35a;font-weight:normal;letter-spacing:1px;line-height:1;margin-bottom:.15em}   /* 28.5: ROTA em cima do numero */
+body.ent .st{font-weight:bold;border-radius:8px;text-align:right;white-space:normal;min-width:0;flex:0 1 auto;line-height:1.15}   /* 28.5: encolhe e quebra a linha, nunca sai do quadro */
+body.ent .st .ha{white-space:nowrap}
 body.ent .st.espera{background:#3a3a3a;color:#ddd}body.ent .st.ok{background:#1f6b3a;color:#fff}
 body.ent .st .ha{display:block;font-weight:normal;color:#bbb}body.ent .st.ok .ha{color:#bfe8cc}
 body.ent .peds{border-top:1px dashed #333;display:flex;flex-direction:column}
@@ -792,25 +794,31 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
       sel + ' .tm.espera{font-size:' + p(18) + '}' + sel + ' .tm.feito{font-size:' + p(14) + ';letter-spacing:-.5px}' +
       sel + ' .bt{font-size:' + p(18) + ';letter-spacing:.5px;padding:' + p(9) + ' 0;border-radius:' + p(8) + '}' +
       sel + ' .area svg.lig path{stroke-width:' + Math.max(1.2, 2 * f) + '}' +
-      // 23.7: rotas da Saipos (metade direita no DIA)
-      sel + ' .nrota{font-size:' + p(30) + '}' + sel + ' .nrota small{font-size:' + p(14) + '}' +
+      cssRotasEnt(f, sel);
+  }
+  // 28.4: rotas da Saipos com escala propria (no modo GRANDE elas crescem so se couberem)
+  function cssRotasEnt(f, sel) {
+    sel = sel || 'body.ent';
+    function p(v) { return (Math.round(v * f * 10) / 10) + 'px'; }
+    return sel + ' .nrota{font-size:' + p(30) + '}' + sel + ' .nrota small{font-size:' + p(14) + '}' +
       sel + ' .st{font-size:' + p(15) + ';padding:' + p(6) + ' ' + p(10) + '}' + sel + ' .st .ha{font-size:' + p(12) + '}' +
       sel + ' .peds{margin-top:' + p(8) + ';padding-top:' + p(6) + ';gap:' + p(4) + '}' +
       sel + ' .ped{gap:' + p(12) + ';font-size:' + p(20) + '}' + sel + ' .ped .n{min-width:' + p(64) + '}' +
       sel + ' .rvazio{font-size:' + p(20) + '}';
   }
   var escalaEntAtual = '';
-  function aplicarEscalaEnt(lg, nCol, fMax) {
+  function aplicarEscalaEnt(lg, nCol, fMax, fRotas) {
     try {
       // 4 colunas de ~473px cabem em 1920 (f=1); a partir dai tudo encolhe junto com a tela.
       // 27.8: no modo GRANDE (metade das colunas) o tamanho pode chegar a 2x (fMax = 2)
       var f = Math.min(fMax || 1, Math.max(0.45, (lg - 28) / (473 * nCol)));
-      var chave = f.toFixed(3) + '/' + nCol;
+      var fr = fRotas > 0 ? fRotas : f;
+      var chave = f.toFixed(3) + '/' + nCol + '/' + fr.toFixed(3);
       if (chave === escalaEntAtual) return;
       escalaEntAtual = chave;
       var st = document.getElementById('escalaEnt');
       if (!st) { st = document.createElement('style'); st.id = 'escalaEnt'; document.head.appendChild(st); }
-      st.textContent = cssEntregadores(f);
+      st.textContent = cssEntregadores(f) + (fr !== f ? cssRotasEnt(fr) : '');
     } catch (e) {}
   }
   // Trecho compartilhado (pagina e aba do Escravo): HTML das rotas da Saipos.
@@ -855,13 +863,21 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
     // 23.7: DIA = tela dividida (iFood 2 colunas | rotas da Saipos); rotas de ate 10 min atras valem
     var agoraR = agoraPC();
     var rotasVivas = (TELA_ENT && estado.dia && estado.rotas && agoraR - (estado.rotas.ts || 0) < 600000) ? (estado.rotas.lista || []) : null;
-    var dividida = TELA_ENT && !!rotasVivas;
+    var dividida = TELA_ENT && !!rotasVivas, rotas1Col = false;
     if (TELA_ENT) {
       // 23.2: SEMPRE 4 colunas (a partir de 1150px); os tamanhos acompanham a largura da tela
       var lg = window.innerWidth;
       // 27.8: poucos pedidos = modo GRANDE: metade das colunas e tudo ate 2x maior; enchendo, volta ao normal
       var grande = entGrandeAte() > 0 && lista.length <= entGrandeAte();
-      if (dividida) { nCol = lg >= 700 ? 2 : 1; if (grande) nCol = 1; aplicarEscalaEnt(Math.floor(lg / 2) - 8, nCol, grande ? 2 : 1); }
+      if (dividida) {
+        nCol = lg >= 700 ? 2 : 1; if (grande) nCol = 1;
+        // 28.4: rotas no modo GRANDE: ate 3 rotas = 1 coluna e ate 1,6x; mais que isso = 2 colunas no tamanho normal
+        var meia = Math.floor(lg / 2) - 8, nRot = rotasVivas.length;
+        rotas1Col = grande && nRot <= 3 && lg >= 700;
+        // 28.5: a escala das rotas vem da largura da coluna delas (um quadro de rota precisa de ~380px em f = 1)
+        var fRot = rotas1Col ? Math.min(1.6, Math.max(0.45, (meia - 28) / 380)) : Math.min(1, Math.max(0.45, (meia - 28) / (380 * (lg >= 700 ? 2 : 1))));
+        aplicarEscalaEnt(meia, nCol, grande ? 2 : 1, fRot);
+      }
       else { nCol = lg >= 1150 ? 4 : (lg >= 700 ? 2 : 1); if (grande && nCol > 1) nCol = nCol / 2; aplicarEscalaEnt(lg, nCol, grande ? 2 : 1); }
     }
     if (dividida) html += '<div class="meio">';
@@ -889,7 +905,7 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
               ((!TELA_ENT && r.it && r.it.length) ? htmlItens(r.it) : '') + '</div>';
     });
     html += '</div>' + (TELA_ENT ? '</div>' : '');
-    if (dividida) html += '<div class="rotasArea"><div class="rotasTit">🛵 ROTAS DA SAIPOS — aguardando entregador</div><div class="rotasLista">' + htmlRotas(rotasVivas, agoraR, rotasNomeEm, esc, horaDoTs) + '</div></div></div>';
+    if (dividida) html += '<div class="rotasArea"><div class="rotasTit">🛵 ROTAS DA SAIPOS — aguardando entregador</div><div class="rotasLista' + (rotas1Col ? ' r1' : '') + '">' + htmlRotas(rotasVivas, agoraR, rotasNomeEm, esc, horaDoTs) + '</div></div></div>';
     var corpo = elTela.querySelector('.corpo');
     if (!corpo.__toque) {
       corpo.__toque = 1;
