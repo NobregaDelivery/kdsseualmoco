@@ -430,14 +430,62 @@ var LOGOS_IFOOD={"Feijoada e Fava Manaíra": "logosgde/0045c635-2bee-4f6c-b041-0
   }, 20000);
   // 25.9: RESGATE — a cada 90 s pergunta ao servidor o que saiu depois da ultima mensagem
   // recebida (since=id). O que a ligacao ao vivo perdeu entra por aqui.
-  function urlPoll(srv) {
-    var c = conexoes[srv] || {};
-    var u = baseDe(srv) + '/' + encodeURIComponent(topicoDe(srv)) + '/json?poll=1&since=' + encodeURIComponent(c.ultimoId || (/#ger$/.test(srv) ? '6h' : '30m'));
+  function comAuth(u, srv) {   // 28.6: o token vai na propria URL (o ntfy.sh aceita assim)
     if (token && baseDe(srv) === 'https://ntfy.sh') {
       try { u += '&auth=' + btoa('\u0000user\u0000' + token).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) {}
     }
     return u;
   }
+  function urlPoll(srv) {
+    var c = conexoes[srv] || {};
+    return comAuth(baseDe(srv) + '/' + encodeURIComponent(topicoDe(srv)) + '/json?poll=1&since=' + encodeURIComponent(c.ultimoId || (/#ger$/.test(srv) ? '6h' : '30m')), srv);
+  }
+  // 28.6: ITENS PERDIDOS. Os itens de cada pedido vem UMA vez so (21.4); se justamente essa mensagem se
+  // perdeu no caminho (8030 em 02/11: a tela do KDS ficou sem os itens, enquanto outra tela aberta depois
+  // os recebeu do historico), o pedido ficava sem itens ate o Gestor recarregar. Agora, a cada 60 s, se ha
+  // pedido em preparo/pronto sem itens, a tela pede ao servidor o historico das ultimas 12 h e pega os
+  // itens de la (ate 4 vezes por pedido, 3 min entre elas). So no KDS e na Gerencia (a TV nao mostra itens).
+  var itensBusca = {}, itensBuscando = false;
+  function recuperarItens() {
+    try {
+      if (!sala || TELA_ENT || itensBuscando) return;
+      var ag = Date.now(), faltam = [];
+      Object.keys(estado.pedidos).forEach(function (n) {
+        var r = estado.pedidos[n];
+        if (!r || r.z || r.cw || (r.e !== 'preparo' && r.e !== 'pronto')) return;
+        if (r.it && r.it.length) return;
+        if (ag - (r._ts || 0) < 20000) return;   // acabou de chegar: os itens ainda podem estar a caminho
+        var b = itensBusca[n] || { t: 0, ts: 0 };
+        if (b.t >= 4 || ag - b.ts < 180000) return;
+        faltam.push(String(n));
+      });
+      if (!faltam.length) return;
+      faltam.forEach(function (n) { var b = itensBusca[n] || { t: 0, ts: 0 }; b.t++; b.ts = ag; itensBusca[n] = b; });
+      var srv = SERVIDORES[0];
+      itensBuscando = true;
+      fetch(comAuth(baseDe(srv) + '/' + encodeURIComponent(topicoDe(srv)) + '/json?poll=1&since=12h', srv), { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .then(function (txt) {
+          var achados = 0;
+          txt.split('\n').forEach(function (ln) {
+            if (!ln) return;
+            var env = null; try { env = JSON.parse(ln); } catch (e) { return; }
+            if (!env || env.event !== 'message') return;
+            var msg = null; try { msg = JSON.parse(env.message); } catch (e) { return; }
+            if (!msg || msg.t !== 'noite') return;
+            (msg.p || []).forEach(function (c) {
+              if (!c || faltam.indexOf(String(c.n)) < 0 || !(c.it && c.it.length)) return;
+              var r = estado.pedidos[c.n];
+              if (r && !(r.it && r.it.length)) { r.it = c.it; achados++; }
+            });
+          });
+          if (achados) { salvarEstado(); desenhar(); }
+        })
+        .catch(function () {})
+        .then(function () { itensBuscando = false; });
+    } catch (e) { itensBuscando = false; }
+  }
+  setInterval(recuperarItens, 60000); setTimeout(recuperarItens, 25000);
   var resgatando = {};
   function resgatar(srv) {
     var c = conexoes[srv];
